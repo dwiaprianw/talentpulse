@@ -112,22 +112,41 @@ export default function App() {
   // Handler for booking inquiry success
   const handleBookingSuccess = (createdProject, formData) => {
     if (createdProject) {
-      setProjects((prev) => [createdProject, ...prev]);
+      setProjects((prev) => {
+        // Prevent duplicate if already added
+        const exists = prev.some((p) => p.id === createdProject.id);
+        if (exists) return prev;
+        return [createdProject, ...prev];
+      });
     }
-    // Refresh stats
+    // Refresh projects and stats from backend
+    fetchProjects().then(setProjects).catch(() => {});
     fetchStats().then(setStats).catch(() => {});
 
     addToast({
       type: 'success',
       title: 'Booking Inquiry Received!',
-      message: `Thank you, ${formData.contact_person}. We have logged your inquiry for "${formData.project_title}" and will contact ${formData.email} within 24 hours.`
+      message: `Thank you, ${formData?.contact_person || 'Client'}. We have logged your inquiry for "${formData?.project_title || 'Campaign'}" and will contact ${formData?.email || 'you'} within 24 hours.`
     });
+  };
+
+  // View switch handler with background sync
+  const handleViewChange = (view) => {
+    setCurrentView(view);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (view === 'crm') {
+      fetchProjects().then(setProjects).catch(() => {});
+      fetchStats().then(setStats).catch(() => {});
+      fetchTalents().then(setTalents).catch(() => {});
+      fetchSchedules().then(setSchedules).catch(() => {});
+    }
   };
 
   // CRM Update Handlers
   const handleTalentUpdated = (updatedTalent) => {
     setTalents((prev) => prev.map((t) => (t.id === updatedTalent.id ? updatedTalent : t)));
     fetchStats().then(setStats).catch(() => {});
+    fetchProjects().then(setProjects).catch(() => {});
   };
 
   const handleTalentCreated = (newTalent) => {
@@ -163,10 +182,7 @@ export default function App() {
       {/* Navigation Bar with View Switcher */}
       <Navbar
         currentView={currentView}
-        onViewChange={(view) => {
-          setCurrentView(view);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
+        onViewChange={handleViewChange}
         onOpenInquiry={() => handleOpenBooking(null)}
       />
 
@@ -401,7 +417,7 @@ export default function App() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   type="button"
-                  onClick={() => setCurrentView('public')}
+                  onClick={() => handleViewChange('public')}
                   className="btn btn-secondary btn-sm"
                 >
                   &larr; View Public Showcase

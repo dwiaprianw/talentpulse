@@ -16,7 +16,8 @@ import {
   AlertCircle,
   MapPin,
   User,
-  CheckCircle2
+  CheckCircle2,
+  Briefcase
 } from 'lucide-react';
 import { deleteSchedule } from '../../services/api';
 import AddScheduleModal from './AddScheduleModal';
