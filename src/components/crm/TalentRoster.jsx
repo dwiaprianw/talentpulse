@@ -1,207 +1,207 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Users,
-  LayoutGrid,
-  List,
   Search,
   Plus,
-  Filter,
-  DollarSign,
-  TrendingUp,
-  Sparkles,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  ExternalLink,
-  ChevronDown,
+  Grid,
+  List,
   Eye,
-  Percent
+  Percent,
+  Lock
 } from 'lucide-react';
 import { updateTalentStatus } from '../../services/api';
 import AddTalentModal from './AddTalentModal';
+import { useAuth } from '../../services/AuthContext';
+
+const CATEGORIES = ['All', 'Model', 'Influencer', 'Photographer', 'Videographer', 'Designer'];
+
+const STATUS_CONFIG = {
+  available: { label: 'Available', bg: '#D1FAE5', color: '#047857', border: '#A7F3D0' },
+  on_shoot: { label: 'On Shooting', bg: '#FEF3C7', color: '#B45309', border: '#FDE68A' },
+  unavailable: { label: 'Off Duty', bg: '#FFE4E6', color: '#BE123C', border: '#FECDD3' }
+};
 
 export default function TalentRoster({
   talents = [],
+  onUpdateTalents = () => {},
   onTalentUpdated = () => {},
   onTalentCreated = () => {},
   onViewTalentDetails = () => {},
   addToast = () => {}
 }) {
-  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
+  const { userRole } = useAuth();
+  const isAdmin = userRole === 'admin';
+
+  const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState(null);
 
-  // Status definition maps
-  const STATUS_CONFIG = {
-    available: { label: 'Available', color: '#34D399', bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.35)', next: 'on_shoot' },
-    on_shoot: { label: 'On Shooting', color: '#FBBF24', bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.35)', next: 'unavailable' },
-    unavailable: { label: 'Off Duty', color: '#FB7185', bg: 'rgba(244, 63, 94, 0.15)', border: 'rgba(244, 63, 94, 0.35)', next: 'available' }
-  };
+  const notifyTalentUpdate = onTalentUpdated || onUpdateTalents || (() => {});
+  const notifyTalentCreated = onTalentCreated || (() => {});
 
-  // Helper to parse numeric fee from string (e.g. "$1,800 / day" -> 1800)
-  const extractNumber = (str) => {
-    if (!str) return 0;
-    const match = str.toString().match(/\$?([0-9,]+)/);
-    if (!match) return 0;
-    const parsed = parseInt(match[1].replace(/,/g, ''), 10);
-    return isNaN(parsed) ? 0 : parsed;
-  };
-
-  // Calculate gross margin %
+  // Calculate gross margin percentage
   const calculateMargin = (internalFeeStr, rateCardStr) => {
-    const cost = extractNumber(internalFeeStr);
-    const revenue = extractNumber(rateCardStr);
-    if (!revenue || revenue <= 0 || !cost) return null;
-    const margin = Math.round(((revenue - cost) / revenue) * 100);
-    return margin;
+    try {
+      const parseNum = (str) => {
+        if (!str) return 0;
+        const cleaned = str.replace(/[^0-9]/g, '');
+        return parseFloat(cleaned) || 0;
+      };
+
+      const cost = parseNum(internalFeeStr);
+      const gross = parseNum(rateCardStr);
+
+      if (cost === 0 || gross === 0 || gross <= cost) return 40;
+      return Math.round(((gross - cost) / gross) * 100);
+    } catch {
+      return 35;
+    }
   };
 
-  // Filtered talents
-  const filteredTalents = useMemo(() => {
-    return talents.filter((talent) => {
-      // Category filter
-      if (selectedCategory !== 'All') {
-        if ((talent.category || '').toLowerCase() !== selectedCategory.toLowerCase()) {
-          return false;
-        }
-      }
+  // Filter talents
+  const filteredTalents = talents.filter((talent) => {
+    const matchesCategory =
+      activeCategory === 'All' ||
+      (talent.category || '').toLowerCase() === activeCategory.toLowerCase();
 
-      // Status filter
-      if (statusFilter !== 'All') {
-        const tStatus = (talent.status || 'available').toLowerCase();
-        if (statusFilter === 'available' && tStatus !== 'available') return false;
-        if (statusFilter === 'on_shoot' && tStatus !== 'on_shoot' && tStatus !== 'booked') return false;
-        if (statusFilter === 'unavailable' && tStatus !== 'unavailable' && tStatus !== 'off_duty') return false;
-      }
+    const matchesSearch =
+      (talent.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (talent.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (typeof talent.niche_tags === 'string' && talent.niche_tags.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      // Search query
-      if (searchQuery.trim() !== '') {
-        const q = searchQuery.toLowerCase();
-        const nameMatch = (talent.name || '').toLowerCase().includes(q);
-        const titleMatch = (talent.title || '').toLowerCase().includes(q);
-        const catMatch = (talent.category || '').toLowerCase().includes(q);
-        const tags = Array.isArray(talent.niche_tags)
-          ? talent.niche_tags.join(' ').toLowerCase()
-          : (talent.niche_tags || '').toLowerCase();
-        const tagMatch = tags.includes(q);
-        return nameMatch || titleMatch || catMatch || tagMatch;
-      }
+    const statusKey = (talent.status || 'available').toLowerCase();
+    const matchesStatus = statusFilter === 'All' || statusKey === statusFilter.toLowerCase();
 
-      return true;
-    });
-  }, [talents, selectedCategory, statusFilter, searchQuery]);
+    return matchesCategory && matchesSearch && matchesStatus;
+  });
 
-  // Handle Quick Status Toggle
-  const handleToggleStatus = async (talent, explicitStatus = null) => {
-    const currentStatus = (talent.status || 'available').toLowerCase();
-    let nextStatus = explicitStatus;
-    if (!nextStatus) {
-      if (currentStatus === 'available') nextStatus = 'on_shoot';
-      else if (currentStatus === 'on_shoot' || currentStatus === 'booked') nextStatus = 'unavailable';
-      else nextStatus = 'available';
-    }
+  // Cycle status between available -> on_shoot -> unavailable
+  const handleToggleStatus = async (talent) => {
+    const statusCycle = ['available', 'on_shoot', 'unavailable'];
+    const currentIdx = statusCycle.indexOf((talent.status || 'available').toLowerCase());
+    const nextStatus = statusCycle[(currentIdx + 1) % statusCycle.length];
 
     try {
       setStatusUpdatingId(talent.id);
       const updated = await updateTalentStatus(talent.id, nextStatus);
-      onTalentUpdated(updated);
+
+      // Update parent state
+      const updatedTalentObj = { ...talent, status: nextStatus, ...updated };
+      const updatedList = talents.map((t) =>
+        t.id === talent.id ? updatedTalentObj : t
+      );
+      notifyTalentUpdate(updatedList);
+
       addToast({
         type: 'success',
-        title: 'Talent Status Updated',
-        message: `${talent.name} is now marked as ${STATUS_CONFIG[nextStatus]?.label || nextStatus}.`
+        title: 'Status Updated',
+        message: `${talent.name}'s status changed to ${STATUS_CONFIG[nextStatus]?.label}`
       });
     } catch (err) {
-      console.error('Failed to update talent status:', err);
+      console.error('Error updating status:', err);
       addToast({
         type: 'error',
-        title: 'Status Update Failed',
-        message: err.message || 'Could not update talent status on server'
+        title: 'Update Failed',
+        message: err.message || 'Could not update talent status'
       });
     } finally {
       setStatusUpdatingId(null);
     }
   };
 
-  // Handle Talent Created
-  const handleTalentCreated = (newTalent) => {
-    onTalentCreated(newTalent);
+  const handleCreated = (newTalent) => {
+    notifyTalentCreated(newTalent);
     addToast({
       type: 'success',
-      title: 'Talent Registered!',
-      message: `Successfully added ${newTalent.name} to the agency talent roster.`
+      title: 'Talent Registered',
+      message: `${newTalent.name} added to agency roster!`
     });
   };
 
-  const categories = ['All', 'Model', 'Influencer', 'Photographer', 'Videographer', 'Designer'];
-
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Top Header & Action Controls */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Control Header & Filters Toolbar */}
       <div
+        className="glass-panel"
         style={{
+          padding: '24px 28px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '16px'
+          gap: '16px',
+          background: '#FFFFFF',
+          boxShadow: 'var(--shadow-md)',
+          border: '1px solid var(--color-border-medium)'
         }}
       >
         <div>
-          <h2 className="font-heading" style={{ fontSize: '1.6rem', marginBottom: '4px' }}>
-            Agency Talent Roster & Rate Management
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: 'var(--color-accent-purple-light)',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '4px'
+            }}
+          >
+            <Users size={15} /> Roster & Fee Management
+          </div>
+          <h2 className="font-heading" style={{ fontSize: '1.6rem', color: 'var(--color-text-primary)' }}>
+            Agency <span className="text-gradient-purple-pink">Talent Roster</span>
           </h2>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.88rem' }}>
-            Direct contract fee tracking, gross margin monitoring, and one-click availability status switching.
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.86rem' }}>
+            Manage talent availability, fee splits, gross margin tracking, and profile metadata.
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Grid vs Table View Switcher */}
+        {/* Action Buttons & View Toggles */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {/* Table / Grid Switcher */}
           <div
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              padding: '4px',
+              background: '#F1F5F9',
+              padding: '3px',
               borderRadius: 'var(--radius-md)',
               display: 'flex',
-              border: '1px solid var(--color-border-subtle)',
-              gap: '4px'
+              alignItems: 'center',
+              border: '1px solid var(--color-border-medium)'
             }}
           >
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              title="Table View"
+              className="btn-icon"
               style={{
                 padding: '6px 10px',
-                borderRadius: 'var(--radius-sm)',
-                background: viewMode === 'table' ? 'rgba(139, 92, 246, 0.25)' : 'transparent',
+                background: viewMode === 'table' ? 'linear-gradient(135deg, var(--color-accent-purple) 0%, var(--color-accent-pink) 100%)' : 'transparent',
                 color: viewMode === 'table' ? '#FFFFFF' : 'var(--color-text-secondary)',
-                border: viewMode === 'table' ? '1px solid rgba(139, 92, 246, 0.4)' : '1px solid transparent',
-                display: 'flex',
-                alignItems: 'center'
+                borderRadius: 'var(--radius-sm)'
               }}
+              title="Table View"
             >
               <List size={16} />
             </button>
-
             <button
               type="button"
               onClick={() => setViewMode('grid')}
-              title="Grid View"
+              className="btn-icon"
               style={{
                 padding: '6px 10px',
-                borderRadius: 'var(--radius-sm)',
-                background: viewMode === 'grid' ? 'rgba(139, 92, 246, 0.25)' : 'transparent',
+                background: viewMode === 'grid' ? 'linear-gradient(135deg, var(--color-accent-purple) 0%, var(--color-accent-pink) 100%)' : 'transparent',
                 color: viewMode === 'grid' ? '#FFFFFF' : 'var(--color-text-secondary)',
-                border: viewMode === 'grid' ? '1px solid rgba(139, 92, 246, 0.4)' : '1px solid transparent',
-                display: 'flex',
-                alignItems: 'center'
+                borderRadius: 'var(--radius-sm)'
               }}
+              title="Grid Cards View"
             >
-              <LayoutGrid size={16} />
+              <Grid size={16} />
             </button>
           </div>
 
@@ -216,11 +216,9 @@ export default function TalentRoster({
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
+      {/* Category Pills & Search Row */}
       <div
-        className="glass-card"
         style={{
-          padding: '16px 20px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -228,31 +226,37 @@ export default function TalentRoster({
           gap: '16px'
         }}
       >
-        {/* Category Filter Pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setSelectedCategory(cat)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '0.82rem',
-                fontWeight: 600,
-                transition: 'all var(--transition-fast)',
-                background: selectedCategory === cat ? 'linear-gradient(135deg, var(--color-accent-purple) 0%, var(--color-accent-pink) 100%)' : 'rgba(255, 255, 255, 0.05)',
-                color: selectedCategory === cat ? '#FFFFFF' : 'var(--color-text-secondary)',
-                border: selectedCategory === cat ? '1px solid transparent' : '1px solid var(--color-border-subtle)'
-              }}
-            >
-              {cat}
-            </button>
-          ))}
+        {/* Category Pills */}
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+          {CATEGORIES.map((cat) => {
+            const isActive = activeCategory.toLowerCase() === cat.toLowerCase();
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setActiveCategory(cat)}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.84rem',
+                  fontWeight: 600,
+                  transition: 'all var(--transition-fast)',
+                  background: isActive ? 'linear-gradient(135deg, var(--color-accent-purple) 0%, var(--color-accent-pink) 100%)' : '#FFFFFF',
+                  color: isActive ? '#FFFFFF' : 'var(--color-text-secondary)',
+                  border: isActive ? '1px solid transparent' : '1px solid var(--color-border-medium)',
+                  boxShadow: isActive ? '0 2px 8px rgba(139, 92, 246, 0.3)' : 'var(--shadow-sm)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {cat}
+              </button>
+            );
+          })}
         </div>
 
         {/* Search & Status Filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <div style={{ position: 'relative', width: '220px' }}>
             <Search
               size={15}
@@ -278,12 +282,12 @@ export default function TalentRoster({
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="glass-input"
-            style={{ width: '150px', fontSize: '0.85rem', background: 'rgba(15, 23, 42, 0.9)' }}
+            style={{ width: '150px', fontSize: '0.85rem', background: '#FFFFFF', color: '#0F172A' }}
           >
-            <option value="All">All Statuses</option>
-            <option value="available">🟢 Available</option>
-            <option value="on_shoot">🟡 On Shooting</option>
-            <option value="unavailable">🔴 Off Duty</option>
+            <option value="All" style={{ background: '#FFFFFF', color: '#0F172A' }}>All Statuses</option>
+            <option value="available" style={{ background: '#FFFFFF', color: '#0F172A' }}>🟢 Available</option>
+            <option value="on_shoot" style={{ background: '#FFFFFF', color: '#0F172A' }}>🟡 On Shooting</option>
+            <option value="unavailable" style={{ background: '#FFFFFF', color: '#0F172A' }}>🔴 Off Duty</option>
           </select>
         </div>
       </div>
@@ -343,11 +347,11 @@ export default function TalentRoster({
                               height: '42px',
                               borderRadius: 'var(--radius-md)',
                               objectFit: 'cover',
-                              border: '1px solid var(--color-border-subtle)'
+                              border: '1px solid var(--color-border-medium)'
                             }}
                           />
                           <div>
-                            <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{talent.name}</div>
+                            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>{talent.name}</div>
                             <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
                               {talent.title}
                             </div>
@@ -388,49 +392,61 @@ export default function TalentRoster({
                       {/* Metrics */}
                       <td>
                         <div style={{ fontSize: '0.85rem' }}>
-                          <div style={{ fontWeight: 600 }}>{talent.followers || 'N/A'}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-emerald-light)' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>{talent.followers || 'N/A'}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>
                             {talent.engagement_rate || 'N/A'} Eng.
                           </div>
                         </div>
                       </td>
 
-                      {/* Internal Fee */}
+                      {/* Internal Fee (Protected for Admin) */}
                       <td>
-                        <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>
-                          {talent.internal_fee || '$1,500 / day'}
-                        </div>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Net to Talent</span>
+                        {isAdmin ? (
+                          <>
+                            <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>
+                              {talent.internal_fee || 'Rp 15.000.000 / hari'}
+                            </div>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Net to Talent</span>
+                          </>
+                        ) : (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Lock size={12} color="#D97706" /> <span>Confidential</span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Public Rate Card */}
                       <td>
                         <div style={{ fontWeight: 700, color: 'var(--color-accent-purple-light)', fontSize: '0.9rem' }}>
-                          {talent.rate_card || '$3,000 / day'}
+                          {talent.rate_card || 'Rp 32.000.000 / hari'}
                         </div>
                         <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Client Invoiced</span>
                       </td>
 
-                      {/* Gross Margin */}
+                      {/* Gross Margin (Protected for Admin) */}
                       <td>
-                        {margin !== null ? (
-                          <div
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '2px 8px',
-                              borderRadius: 'var(--radius-sm)',
-                              background: margin >= 40 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                              color: margin >= 40 ? '#34D399' : '#60A5FA',
-                              fontWeight: 700,
-                              fontSize: '0.8rem'
-                            }}
-                          >
-                            <Percent size={12} /> {margin}%
-                          </div>
+                        {isAdmin ? (
+                          margin !== null ? (
+                            <div
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '2px 8px',
+                                borderRadius: 'var(--radius-sm)',
+                                background: margin >= 40 ? '#D1FAE5' : '#DBEAFE',
+                                color: margin >= 40 ? '#047857' : '#1D4ED8',
+                                fontWeight: 700,
+                                fontSize: '0.8rem'
+                              }}
+                            >
+                              <Percent size={12} /> {margin}%
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>&mdash;</span>
+                          )
                         ) : (
-                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>&mdash;</span>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>Admin Only</span>
                         )}
                       </td>
 
@@ -504,7 +520,8 @@ export default function TalentRoster({
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    gap: '16px'
+                    gap: '16px',
+                    background: '#FFFFFF'
                   }}
                 >
                   <div>
@@ -519,12 +536,12 @@ export default function TalentRoster({
                             height: '54px',
                             borderRadius: 'var(--radius-md)',
                             objectFit: 'cover',
-                            border: '1px solid var(--color-border-subtle)'
+                            border: '1px solid var(--color-border-medium)'
                           }}
                         />
                         <div>
-                          <div style={{ fontWeight: 800, fontSize: '1.05rem' }}>{talent.name}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--color-accent-purple-light)' }}>
+                          <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-text-primary)' }}>{talent.name}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-accent-purple-light)', fontWeight: 600 }}>
                             {talent.category}
                           </div>
                         </div>
@@ -561,10 +578,10 @@ export default function TalentRoster({
                     {/* Rates & Margin Box */}
                     <div
                       style={{
-                        background: 'rgba(15, 23, 42, 0.5)',
+                        background: '#F8FAFC',
                         padding: '10px 14px',
                         borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--color-border-subtle)',
+                        border: '1px solid var(--color-border-medium)',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
@@ -572,24 +589,26 @@ export default function TalentRoster({
                       }}
                     >
                       <div>
-                        <span style={{ color: 'var(--color-text-muted)', display: 'block', fontSize: '0.72rem' }}>Cost</span>
-                        <strong style={{ color: 'var(--color-text-primary)' }}>{talent.internal_fee || '$1,500'}</strong>
+                        <span style={{ color: 'var(--color-text-muted)', display: 'block', fontSize: '0.72rem', fontWeight: 600 }}>Cost</span>
+                        <strong style={{ color: 'var(--color-text-primary)' }}>
+                          {isAdmin ? (talent.internal_fee || 'Rp 15.000.000') : '🔒 Hidden'}
+                        </strong>
                       </div>
                       <div style={{ textAlign: 'center' }}>
-                        <span style={{ color: 'var(--color-text-muted)', display: 'block', fontSize: '0.72rem' }}>Rate Card</span>
-                        <strong style={{ color: 'var(--color-accent-purple-light)' }}>{talent.rate_card || '$3,000'}</strong>
+                        <span style={{ color: 'var(--color-text-muted)', display: 'block', fontSize: '0.72rem', fontWeight: 600 }}>Rate Card</span>
+                        <strong style={{ color: 'var(--color-accent-purple-light)' }}>{talent.rate_card || 'Rp 32.000.000'}</strong>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <span style={{ color: 'var(--color-text-muted)', display: 'block', fontSize: '0.72rem' }}>Margin</span>
-                        <span style={{ color: '#34D399', fontWeight: 700 }}>
-                          {margin !== null ? `${margin}%` : 'N/A'}
+                        <span style={{ color: 'var(--color-text-muted)', display: 'block', fontSize: '0.72rem', fontWeight: 600 }}>Margin</span>
+                        <span style={{ color: '#047857', fontWeight: 800 }}>
+                          {isAdmin ? (margin !== null ? `${margin}%` : 'N/A') : '🔒 Masked'}
                         </span>
                       </div>
                     </div>
                   </div>
 
                   {/* Card Footer Actions */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--color-border-subtle)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--color-border-medium)' }}>
                     <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
                       {talent.followers || '0'} followers &bull; {talent.engagement_rate || '0%'}
                     </div>
@@ -614,7 +633,7 @@ export default function TalentRoster({
       <AddTalentModal
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}
-        onSuccess={handleTalentCreated}
+        onSuccess={handleCreated}
       />
     </div>
   );

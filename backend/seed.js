@@ -10,8 +10,8 @@ const talentsData = [
     niche_tags: JSON.stringify(['High Fashion', 'Editorial', 'Runway', 'Luxury']),
     followers: '520K',
     engagement_rate: '5.2%',
-    internal_fee: '$1,800 / day',
-    rate_card: '$3,500 / day',
+    internal_fee: 'Rp 18.000.000 / hari',
+    rate_card: 'Rp 35.000.000 / hari',
     status: 'available'
   },
   {
@@ -23,8 +23,8 @@ const talentsData = [
     niche_tags: JSON.stringify(['Streetwear', 'Sneakers', 'Lifestyle', 'Tech']),
     followers: '890K',
     engagement_rate: '6.8%',
-    internal_fee: '$2,200 / campaign',
-    rate_card: '$4,800 / campaign',
+    internal_fee: 'Rp 22.000.000 / kampanye',
+    rate_card: 'Rp 48.000.000 / kampanye',
     status: 'on_shoot'
   },
   {
@@ -36,8 +36,8 @@ const talentsData = [
     niche_tags: JSON.stringify(['Commercial', 'Studio', 'Editorial', 'Color Grading']),
     followers: '210K',
     engagement_rate: '7.4%',
-    internal_fee: '$1,500 / shoot',
-    rate_card: '$3,200 / shoot',
+    internal_fee: 'Rp 15.000.000 / sesi',
+    rate_card: 'Rp 32.000.000 / sesi',
     status: 'available'
   },
   {
@@ -49,8 +49,8 @@ const talentsData = [
     niche_tags: JSON.stringify(['Cinematography', 'Drone 4K', 'Brand Commercials', 'VFX']),
     followers: '340K',
     engagement_rate: '4.9%',
-    internal_fee: '$2,000 / day',
-    rate_card: '$4,000 / day',
+    internal_fee: 'Rp 20.000.000 / hari',
+    rate_card: 'Rp 40.000.000 / hari',
     status: 'available'
   },
   {
@@ -62,8 +62,8 @@ const talentsData = [
     niche_tags: JSON.stringify(['3D Motion', 'Brand Identity', 'CGI', 'Creative Direction']),
     followers: '175K',
     engagement_rate: '8.1%',
-    internal_fee: '$1,600 / project',
-    rate_card: '$3,800 / project',
+    internal_fee: 'Rp 16.000.000 / proyek',
+    rate_card: 'Rp 38.000.000 / proyek',
     status: 'available'
   },
   {
@@ -75,8 +75,8 @@ const talentsData = [
     niche_tags: JSON.stringify(['Fitness', 'Outdoor', 'Athletic', 'Nutrition']),
     followers: '640K',
     engagement_rate: '5.9%',
-    internal_fee: '$1,900 / post',
-    rate_card: '$3,600 / post',
+    internal_fee: 'Rp 19.000.000 / konten',
+    rate_card: 'Rp 36.000.000 / konten',
     status: 'unavailable'
   }
 ];
@@ -86,11 +86,11 @@ const projectsData = [
     brand_name: 'Aetheria Luxury Apparel',
     contact_person: 'Sarah Jenkins',
     email: 's.jenkins@aetheria.com',
-    phone: '+1 (555) 234-5678',
+    phone: '+62 812 2345 6789',
     project_title: 'Autumn Paris Collection Campaign',
     project_type: 'Editorial Lookbook & Runway',
     target_date: '2026-09-12',
-    budget_range: '$15,000 - $25,000',
+    budget_range: 'Rp 150.000.000 - Rp 250.000.000',
     status_stage: 'in_execution',
     talent_index: 0, // Elena Rostova
     notes: 'Requires 2-day outdoor Paris shooting and 3 studio lookbook sessions.'
@@ -99,11 +99,11 @@ const projectsData = [
     brand_name: 'HyperPulse Sneakers',
     contact_person: 'David Zhao',
     email: 'partnerships@hyperpulse.io',
-    phone: '+1 (555) 890-1234',
+    phone: '+62 813 8901 2345',
     project_title: 'Neon Drift Gen-Z Sneaker Drop',
     project_type: 'Social Campaign & Video Reels',
     target_date: '2026-09-01',
-    budget_range: '$8,000 - $12,000',
+    budget_range: 'Rp 80.000.000 - Rp 120.000.000',
     status_stage: 'confirmed',
     talent_index: 1, // Marcus Vance
     notes: 'Deliverable: 3 Instagram Reels, 2 TikToks, and high-res street style stills.'
@@ -112,11 +112,11 @@ const projectsData = [
     brand_name: 'Luminae Cosmetics',
     contact_person: 'Camille Dubois',
     email: 'camille@luminaecosmetics.fr',
-    phone: '+33 6 12 34 56 78',
+    phone: '+62 815 6789 0123',
     project_title: 'Glow Serum Global Launch',
     project_type: 'Studio Product Photography',
     target_date: '2026-08-30',
-    budget_range: '$5,000 - $10,000',
+    budget_range: 'Rp 50.000.000 - Rp 100.000.000',
     status_stage: 'in_execution',
     talent_index: 2, // Aria Chen
     notes: 'Macro product shots, texture spreads, and lighting setups.'
@@ -125,11 +125,11 @@ const projectsData = [
     brand_name: 'Vortex Energy Drink',
     contact_person: 'Tyler Brooks',
     email: 'marketing@vortexenergy.com',
-    phone: '+1 (555) 432-8765',
+    phone: '+62 817 4321 8765',
     project_title: 'Extreme Mountain Biking Promo',
     project_type: 'Commercial Drone Video',
     target_date: '2026-09-20',
-    budget_range: '$12,000 - $18,000',
+    budget_range: 'Rp 120.000.000 - Rp 180.000.000',
     status_stage: 'quotation_sent',
     talent_index: 3, // Julian Sterling
     notes: '4K FPV drone footage and action camera sync on steep trails.'
@@ -138,11 +138,11 @@ const projectsData = [
     brand_name: 'Solace Audio',
     contact_person: 'Henrik Larsson',
     email: 'brand@solaceaudio.se',
-    phone: '+46 8 123 4567',
+    phone: '+62 818 1234 5678',
     project_title: 'Spatial Sound Headphone Rebrand',
     project_type: '3D CGI Brand Package',
     target_date: '2026-10-05',
-    budget_range: '$10,000 - $16,000',
+    budget_range: 'Rp 100.000.000 - Rp 160.000.000',
     status_stage: 'new_lead',
     talent_index: 4, // Maya Linnea
     notes: 'Client submitted booking inquiry via marketing showcase for 3D animation.'
@@ -151,11 +151,11 @@ const projectsData = [
     brand_name: 'Apex Horizon Apparel',
     contact_person: 'Rachel Miller',
     email: 'rachel@apexhorizon.com',
-    phone: '+1 (555) 765-4321',
+    phone: '+62 819 7654 3210',
     project_title: 'Alpine Summit Performance Wear',
     project_type: 'Brand Ambassadorship',
     target_date: '2026-08-15',
-    budget_range: '$20,000 - $30,000',
+    budget_range: 'Rp 200.000.000 - Rp 300.000.000',
     status_stage: 'completed',
     talent_index: 5, // Kaito Tanaka
     notes: 'Completed multi-month campaign. Invoice cleared and metrics exceeded expectations.'
@@ -164,11 +164,11 @@ const projectsData = [
     brand_name: 'Velour Noir Perfumes',
     contact_person: 'Antoine Laurent',
     email: 'inquiries@velournoir.com',
-    phone: '+33 1 98 76 54 32',
+    phone: '+62 821 9876 5432',
     project_title: 'Midnight Blossom Perfume Film',
     project_type: 'Commercial Film & Photo',
     target_date: '2026-09-28',
-    budget_range: '$18,000 - $28,000',
+    budget_range: 'Rp 180.000.000 - Rp 280.000.000',
     status_stage: 'new_lead',
     talent_index: 0, // Elena Rostova
     notes: 'Direct client inquiry from website contact form.'
@@ -206,7 +206,7 @@ const schedulesData = [
     title: 'HyperPulse - Teaser Reel Social Post Drop',
     event_type: 'content_post',
     event_date: '2026-09-01',
-    notes: 'Synchronized launch across Instagram and TikTok @ 12:00 PM EST.'
+    notes: 'Synchronized launch across Instagram and TikTok @ 12:00 PM WIB.'
   },
   {
     project_index: 2,
@@ -246,13 +246,13 @@ const schedulesData = [
     title: 'Apex Horizon - Final Campaign Invoice Cleared',
     event_type: 'payment',
     event_date: '2026-08-20',
-    notes: 'Payment wire of $25,000 received and talent fee disbursed.'
+    notes: 'Pembayaran transfer Rp 250.000.000 diterima dan honor talent telah disalurkan.'
   }
 ];
 
 export async function seed() {
   try {
-    console.log('🚀 Starting SQLite database initialization and seeding...');
+    console.log('🚀 Starting SQLite database initialization and seeding (IDR Currency)...');
     await initDB();
 
     // Clear existing data
@@ -283,7 +283,7 @@ export async function seed() {
       );
       talentIds.push(res.lastID);
     }
-    console.log(`✅ Seeded ${talentIds.length} talents.`);
+    console.log(`✅ Seeded ${talentIds.length} talents (IDR rates).`);
 
     // Insert Projects
     const projectIds = [];
@@ -308,7 +308,7 @@ export async function seed() {
       );
       projectIds.push(res.lastID);
     }
-    console.log(`✅ Seeded ${projectIds.length} projects.`);
+    console.log(`✅ Seeded ${projectIds.length} projects (IDR budgets).`);
 
     // Insert Schedules
     let scheduleCount = 0;

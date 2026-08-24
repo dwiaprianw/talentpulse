@@ -1,21 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
-  Briefcase,
+  TrendingUp,
   Search,
-  Filter,
-  ArrowLeft,
+  Plus,
   ArrowRight,
+  ArrowLeft,
   User,
   Calendar,
-  DollarSign,
-  Mail,
-  Phone,
-  Clock,
-  Sparkles,
-  ChevronRight,
-  CheckCircle2,
-  Send,
-  Plus
+  Mail
 } from 'lucide-react';
 import { updateProjectStage } from '../../services/api';
 
@@ -23,170 +15,207 @@ const PIPELINE_STAGES = [
   {
     id: 'new_lead',
     title: 'New Leads',
-    subtitle: 'Inbound inquiries',
-    badgeColor: 'var(--color-accent-blue-light)',
-    badgeBg: 'rgba(59, 130, 246, 0.15)',
-    borderColor: 'rgba(59, 130, 246, 0.3)'
+    subtitle: 'Public Inquiries',
+    badgeBg: '#DBEAFE',
+    badgeColor: '#1D4ED8',
+    borderColor: '#BFDBFE'
   },
   {
     id: 'quotation_sent',
     title: 'Quotation Sent',
-    subtitle: 'Proposal delivered',
-    badgeColor: 'var(--color-accent-purple-light)',
-    badgeBg: 'rgba(139, 92, 246, 0.15)',
-    borderColor: 'rgba(139, 92, 246, 0.3)'
+    subtitle: 'Proposal Pending',
+    badgeBg: '#F3E8FF',
+    badgeColor: '#6B21A8',
+    borderColor: '#E9D5FF'
   },
   {
     id: 'confirmed',
     title: 'Confirmed',
-    subtitle: 'Contract & deposit',
-    badgeColor: 'var(--color-accent-cyan)',
-    badgeBg: 'rgba(6, 182, 212, 0.15)',
-    borderColor: 'rgba(6, 182, 212, 0.3)'
+    subtitle: 'Deposit Paid',
+    badgeBg: '#FCE7F3',
+    badgeColor: '#BE185D',
+    borderColor: '#FBCFE8'
   },
   {
     id: 'in_execution',
     title: 'In Execution',
-    subtitle: 'Production & shooting',
-    badgeColor: 'var(--color-accent-amber-light)',
-    badgeBg: 'rgba(245, 158, 11, 0.15)',
-    borderColor: 'rgba(245, 158, 11, 0.3)'
+    subtitle: 'Shooting & Editing',
+    badgeBg: '#FEF3C7',
+    badgeColor: '#B45309',
+    borderColor: '#FDE68A'
   },
   {
     id: 'completed',
     title: 'Completed',
-    subtitle: 'Delivered & cleared',
-    badgeColor: 'var(--color-accent-emerald-light)',
-    badgeBg: 'rgba(16, 185, 129, 0.15)',
-    borderColor: 'rgba(16, 185, 129, 0.3)'
+    subtitle: 'Delivered & Invoiced',
+    badgeBg: '#D1FAE5',
+    badgeColor: '#047857',
+    borderColor: '#A7F3D0'
   }
 ];
 
 export default function KanbanPipeline({
   projects = [],
   talents = [],
-  onProjectUpdated = () => {},
+  onProjectUpdated,
+  onUpdateProjects,
   onOpenBooking = () => {},
-  addToast = () => {}
+  addToast,
+  onTriggerToast
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [talentFilter, setTalentFilter] = useState('All');
   const [movingProjectId, setMovingProjectId] = useState(null);
 
-  // Helper to extract numeric budget for sum
+  const triggerToast = addToast || onTriggerToast || (() => {});
+  const notifyProjectUpdate = onProjectUpdated || onUpdateProjects || (() => {});
+
+  // Helper to calculate numerical value of budget range string in Rupiah (IDR)
   const parseBudget = (budgetStr) => {
-    if (!budgetStr) return 0;
-    const match = budgetStr.match(/\$?([0-9,]+)/);
-    if (!match) return 0;
-    const parsed = parseInt(match[1].replace(/,/g, ''), 10);
-    return isNaN(parsed) ? 0 : parsed;
+    if (!budgetStr) return 50000000;
+    const str = budgetStr.toString();
+    if (str.includes('250.000.000+') || str.includes('300.000.000') || str.includes('25,000+')) return 250000000;
+    if (str.includes('180.000.000') || str.includes('250.000.000') || str.includes('280.000.000')) return 200000000;
+    if (str.includes('120.000.000') || str.includes('150.000.000') || str.includes('160.000.000')) return 140000000;
+    if (str.includes('80.000.000') || str.includes('100.000.000')) return 90000000;
+    if (str.includes('50.000.000')) return 75000000;
+    if (str.includes('25.000.000')) return 37500000;
+    return 50000000;
   };
 
-  // Filter projects by search query and talent
-  const filteredProjects = useMemo(() => {
-    return projects.filter((p) => {
-      // Talent filter
-      if (talentFilter !== 'All') {
-        if (String(p.talent_id) !== String(talentFilter)) {
-          return false;
-        }
-      }
+  // Filter projects by search and assigned talent
+  const filteredProjects = projects.filter((p) => {
+    const matchesSearch =
+      (p.brand_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.project_title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.contact_person || '').toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Search query
-      if (searchQuery.trim() !== '') {
-        const q = searchQuery.toLowerCase();
-        const brandMatch = (p.brand_name || '').toLowerCase().includes(q);
-        const titleMatch = (p.project_title || '').toLowerCase().includes(q);
-        const typeMatch = (p.project_type || '').toLowerCase().includes(q);
-        const personMatch = (p.contact_person || '').toLowerCase().includes(q);
-        const talentMatch = (p.talent_name || '').toLowerCase().includes(q);
-        return brandMatch || titleMatch || typeMatch || personMatch || talentMatch;
-      }
+    const matchesTalent = talentFilter === 'All' || String(p.talent_id) === String(talentFilter);
 
-      return true;
-    });
-  }, [projects, searchQuery, talentFilter]);
+    return matchesSearch && matchesTalent;
+  });
 
-  // Stage shifting logic
-  const handleShiftStage = async (project, targetStage) => {
-    if (!targetStage || project.status_stage === targetStage) return;
+  // Calculate Total Active Pipeline Value in Rupiah (IDR)
+  const totalPipelineVal = filteredProjects.reduce((sum, p) => sum + parseBudget(p.budget_range), 0);
+  const formattedPipelineVal = new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0
+  }).format(totalPipelineVal);
+
+  // Advance or revert project stage
+  const handleShiftStage = async (project, newStageId) => {
+    if (!newStageId || project.status_stage === newStageId) return;
 
     try {
       setMovingProjectId(project.id);
-      const updated = await updateProjectStage(project.id, targetStage);
-      onProjectUpdated(updated);
+      const updated = await updateProjectStage(project.id, newStageId);
 
-      const stageInfo = PIPELINE_STAGES.find((s) => s.id === targetStage);
-      addToast({
+      const updatedProjectObj = { ...project, status_stage: newStageId, ...updated };
+      const updatedProjectsList = projects.map((p) =>
+        p.id === project.id ? updatedProjectObj : p
+      );
+
+      // Trigger state updates in parent App
+      notifyProjectUpdate(updatedProjectsList);
+
+      const targetStageObj = PIPELINE_STAGES.find((s) => s.id === newStageId);
+      triggerToast({
         type: 'success',
-        title: 'Project Moved',
-        message: `"${project.project_title}" shifted to ${stageInfo?.title || targetStage}.`
+        title: 'Kanban Stage Updated',
+        message: `Project "${project.brand_name}" moved to ${targetStageObj?.title || newStageId}`
       });
     } catch (err) {
-      console.error('Failed to move project stage:', err);
-      addToast({
+      console.error('Failed to update stage:', err);
+      triggerToast({
         type: 'error',
         title: 'Stage Update Failed',
-        message: err.message || 'Could not update project stage on server'
+        message: err.message || 'Could not update deal stage.'
       });
     } finally {
       setMovingProjectId(null);
     }
   };
 
-  const getNextStage = (currentStage) => {
-    const idx = PIPELINE_STAGES.findIndex((s) => s.id === currentStage);
-    if (idx < 0 || idx >= PIPELINE_STAGES.length - 1) return null;
-    return PIPELINE_STAGES[idx + 1].id;
+  const getNextStage = (currentStageId) => {
+    const idx = PIPELINE_STAGES.findIndex((s) => s.id === currentStageId);
+    if (idx >= 0 && idx < PIPELINE_STAGES.length - 1) {
+      return PIPELINE_STAGES[idx + 1].id;
+    }
+    return null;
   };
 
-  const getPrevStage = (currentStage) => {
-    const idx = PIPELINE_STAGES.findIndex((s) => s.id === currentStage);
-    if (idx <= 0) return null;
-    return PIPELINE_STAGES[idx - 1].id;
+  const getPrevStage = (currentStageId) => {
+    const idx = PIPELINE_STAGES.findIndex((s) => s.id === currentStageId);
+    if (idx > 0) {
+      return PIPELINE_STAGES[idx - 1].id;
+    }
+    return null;
   };
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Top Header & Search/Filters */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Header & Controls Toolbar */}
       <div
+        className="glass-panel"
         style={{
+          padding: '24px 28px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '16px'
+          gap: '16px',
+          background: '#FFFFFF',
+          boxShadow: 'var(--shadow-md)',
+          border: '1px solid var(--color-border-medium)'
         }}
       >
         <div>
-          <h2 className="font-heading" style={{ fontSize: '1.6rem', marginBottom: '4px' }}>
-            5-Stage Client Project Kanban Pipeline
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: 'var(--color-accent-blue-light)',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '4px'
+            }}
+          >
+            <TrendingUp size={15} /> Deal Flow Management
+          </div>
+          <h2 className="font-heading" style={{ fontSize: '1.6rem', color: 'var(--color-text-primary)' }}>
+            Project <span className="text-gradient-vibrant">Kanban Pipeline</span>
           </h2>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.88rem' }}>
-            Track client booking deals from inbound website inquiries through quotation, confirmation, and shoot execution.
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.86rem' }}>
+            Track client inquiries from lead submission to contract execution. Pipeline Value: {' '}
+            <strong style={{ color: 'var(--color-accent-emerald-light)' }}>{formattedPipelineVal}</strong>
           </p>
         </div>
 
+        {/* Filter Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          {/* Search box */}
+          {/* Keyword Search */}
           <div style={{ position: 'relative', width: '220px' }}>
             <Search
-              size={15}
+              size={16}
               style={{
                 position: 'absolute',
                 left: '12px',
                 top: '50%',
-                transform: 'translateY(-50)',
+                transform: 'translateY(-50%)',
                 color: 'var(--color-text-muted)'
               }}
             />
             <input
               type="text"
+              placeholder="Search deals..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search brand, lead..."
               className="glass-input"
-              style={{ paddingLeft: '34px', fontSize: '0.85rem' }}
+              style={{ paddingLeft: '36px', fontSize: '0.85rem', height: '38px' }}
             />
           </div>
 
@@ -195,11 +224,11 @@ export default function KanbanPipeline({
             value={talentFilter}
             onChange={(e) => setTalentFilter(e.target.value)}
             className="glass-input"
-            style={{ width: '180px', fontSize: '0.85rem', background: 'rgba(15, 23, 42, 0.9)' }}
+            style={{ width: '180px', fontSize: '0.85rem', background: '#FFFFFF', color: '#0F172A', height: '38px' }}
           >
-            <option value="All">All Talents</option>
+            <option value="All" style={{ background: '#FFFFFF', color: '#0F172A' }}>All Talents</option>
             {talents.map((t) => (
-              <option key={t.id} value={t.id}>
+              <option key={t.id} value={t.id} style={{ background: '#FFFFFF', color: '#0F172A' }}>
                 {t.name} ({t.category})
               </option>
             ))}
@@ -209,7 +238,7 @@ export default function KanbanPipeline({
             type="button"
             onClick={() => onOpenBooking(null)}
             className="btn btn-primary"
-            style={{ gap: '6px' }}
+            style={{ gap: '6px', height: '38px' }}
           >
             <Plus size={16} /> New Deal / Lead
           </button>
@@ -218,15 +247,12 @@ export default function KanbanPipeline({
 
       {/* 5 Column Kanban Board */}
       <div className="kanban-board-container">
-        {PIPELINE_STAGES.map((stage, stageIdx) => {
-          // Projects in this column
+        {PIPELINE_STAGES.map((stage) => {
           const columnProjects = filteredProjects.filter((p) => p.status_stage === stage.id);
-
-          // Total column estimated value
           const columnTotalValue = columnProjects.reduce((sum, p) => sum + parseBudget(p.budget_range), 0);
-          const formattedColumnVal = new Intl.NumberFormat('en-US', {
+          const formattedColumnVal = new Intl.NumberFormat('id-ID', {
             style: 'currency',
-            currency: 'USD',
+            currency: 'IDR',
             maximumFractionDigits: 0
           }).format(columnTotalValue);
 
@@ -244,9 +270,9 @@ export default function KanbanPipeline({
                         backgroundColor: stage.badgeColor
                       }}
                     />
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>{stage.title}</h3>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>{stage.title}</h3>
                   </div>
-                  <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginTop: '2px', fontWeight: 600 }}>
                     {stage.subtitle} &bull; {formattedColumnVal}
                   </div>
                 </div>
@@ -275,8 +301,9 @@ export default function KanbanPipeline({
                       padding: '32px 12px',
                       color: 'var(--color-text-muted)',
                       fontSize: '0.82rem',
-                      border: '1px dashed var(--color-border-subtle)',
-                      borderRadius: 'var(--radius-md)'
+                      border: '1px dashed var(--color-border-medium)',
+                      borderRadius: 'var(--radius-md)',
+                      fontWeight: 500
                     }}
                   >
                     No deals in {stage.title.toLowerCase()}
@@ -288,30 +315,54 @@ export default function KanbanPipeline({
                     const isMoving = movingProjectId === project.id;
 
                     return (
-                      <div key={project.id} className="kanban-card">
+                      <div key={project.id} className="kanban-card" style={{ overflow: 'hidden' }}>
                         {/* Brand Name & Project Type */}
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                            <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--color-text-primary)' }}>
+                            <div
+                              style={{
+                                fontWeight: 800,
+                                fontSize: '0.98rem',
+                                color: 'var(--color-text-primary)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                wordBreak: 'break-word'
+                              }}
+                            >
                               {project.brand_name}
                             </div>
                             <span
                               style={{
-                                fontSize: '0.68rem',
+                                fontSize: '0.66rem',
                                 fontWeight: 700,
                                 textTransform: 'uppercase',
-                                color: 'var(--color-accent-purple-light)',
-                                background: 'rgba(139, 92, 246, 0.1)',
-                                padding: '2px 6px',
-                                borderRadius: 'var(--radius-xs)',
-                                whiteSpace: 'nowrap'
+                                color: '#6D28D9',
+                                background: '#F3E8FF',
+                                border: '1px solid #D8B4FE',
+                                padding: '3px 8px',
+                                borderRadius: 'var(--radius-full)',
+                                maxWidth: '130px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0
                               }}
+                              title={project.project_type || 'Campaign'}
                             >
                               {project.project_type || 'Campaign'}
                             </span>
                           </div>
 
-                          <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '4px', fontWeight: 500 }}>
+                          <div
+                            style={{
+                              fontSize: '0.82rem',
+                              color: 'var(--color-text-secondary)',
+                              marginTop: '4px',
+                              fontWeight: 600,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}
+                          >
                             {project.project_title}
                           </div>
                         </div>
@@ -323,10 +374,11 @@ export default function KanbanPipeline({
                             alignItems: 'center',
                             gap: '8px',
                             padding: '6px 10px',
-                            background: 'rgba(15, 23, 42, 0.6)',
+                            background: '#F8FAFC',
                             borderRadius: 'var(--radius-sm)',
-                            border: '1px solid var(--color-border-subtle)',
-                            fontSize: '0.8rem'
+                            border: '1px solid var(--color-border-medium)',
+                            fontSize: '0.8rem',
+                            overflow: 'hidden'
                           }}
                         >
                           {project.talent_avatar ? (
@@ -337,7 +389,8 @@ export default function KanbanPipeline({
                                 width: '22px',
                                 height: '22px',
                                 borderRadius: '50%',
-                                objectFit: 'cover'
+                                objectFit: 'cover',
+                                flexShrink: 0
                               }}
                             />
                           ) : (
@@ -346,29 +399,38 @@ export default function KanbanPipeline({
                                 width: '22px',
                                 height: '22px',
                                 borderRadius: '50%',
-                                background: 'rgba(139, 92, 246, 0.2)',
+                                background: '#F3E8FF',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                color: 'var(--color-accent-purple-light)'
+                                color: '#6D28D9',
+                                flexShrink: 0
                               }}
                             >
                               <User size={12} />
                             </div>
                           )}
-                          <span style={{ color: 'var(--color-accent-purple-light)', fontWeight: 600 }}>
+                          <span
+                            style={{
+                              color: '#6D28D9',
+                              fontWeight: 700,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
                             {project.talent_name || 'Unassigned Talent'}
                           </span>
                         </div>
 
                         {/* Budget & Target Date Row */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
-                          <span style={{ fontWeight: 700, color: 'var(--color-accent-emerald-light)' }}>
-                            {project.budget_range || '$5,000 - $10,000'}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: 'var(--color-text-secondary)', flexWrap: 'wrap', gap: '4px' }}>
+                          <span style={{ fontWeight: 800, color: '#059669' }}>
+                            {project.budget_range || 'Rp 50.000.000 - Rp 100.000.000'}
                           </span>
 
                           {project.target_date && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
                               <Calendar size={12} /> {project.target_date}
                             </span>
                           )}
@@ -376,13 +438,13 @@ export default function KanbanPipeline({
 
                         {/* Contact Person & Email */}
                         {(project.contact_person || project.email) && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border-subtle)', paddingTop: '6px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span>{project.contact_person || 'Client'}</span>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border-medium)', paddingTop: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                              <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project.contact_person || 'Client'}</span>
                               {project.email && (
                                 <a
                                   href={`mailto:${project.email}`}
-                                  style={{ color: 'var(--color-accent-blue-light)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                  style={{ color: '#2563EB', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}
                                   title={project.email}
                                 >
                                   <Mail size={12} /> Email
@@ -401,7 +463,7 @@ export default function KanbanPipeline({
                             gap: '6px',
                             marginTop: '4px',
                             paddingTop: '8px',
-                            borderTop: '1px solid var(--color-border-subtle)'
+                            borderTop: '1px solid var(--color-border-medium)'
                           }}
                         >
                           {/* Move Left Button */}
@@ -428,19 +490,21 @@ export default function KanbanPipeline({
                             disabled={isMoving}
                             onChange={(e) => handleShiftStage(project, e.target.value)}
                             style={{
-                              background: 'rgba(15, 23, 42, 0.8)',
-                              border: '1px solid var(--color-border-subtle)',
-                              color: 'var(--color-text-secondary)',
+                              background: '#F8FAFC',
+                              border: '1px solid var(--color-border-medium)',
+                              color: '#0F172A',
                               fontSize: '0.74rem',
+                              fontWeight: 700,
                               borderRadius: 'var(--radius-xs)',
-                              padding: '3px 6px',
+                              padding: '4px 8px',
                               cursor: 'pointer',
                               outline: 'none',
-                              maxWidth: '120px'
+                              maxWidth: '130px',
+                              textOverflow: 'ellipsis'
                             }}
                           >
                             {PIPELINE_STAGES.map((s) => (
-                              <option key={s.id} value={s.id}>
+                              <option key={s.id} value={s.id} style={{ background: '#FFFFFF', color: '#0F172A' }}>
                                 {s.title}
                               </option>
                             ))}

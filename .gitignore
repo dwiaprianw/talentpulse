@@ -1,6 +1,18 @@
+# Dependencies & Build Outputs
 node_modules
 dist
 dist-ssr
 *.local
 .env
 .DS_Store
+
+# Temporary Video & Media Recordings
+*.mp4
+*.gif
+record_demo.js
+record_demo.cjs
+record_video.cjs
+generate_gif.py
+
+# Database locks / temp files
+*.log

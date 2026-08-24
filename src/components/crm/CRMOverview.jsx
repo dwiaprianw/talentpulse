@@ -3,21 +3,18 @@ import {
   Users,
   Briefcase,
   Sparkles,
-  Calendar,
+  Camera,
   TrendingUp,
-  ArrowRight,
   Plus,
+  Calendar,
+  ChevronRight,
   Clock,
   CheckCircle2,
-  AlertCircle,
-  Camera,
-  Layers,
-  ChevronRight,
-  ExternalLink
+  Layers
 } from 'lucide-react';
 
 export default function CRMOverview({
-  stats = null,
+  stats = {},
   talents = [],
   projects = [],
   schedules = [],
@@ -25,84 +22,78 @@ export default function CRMOverview({
   onOpenAddTalent = () => {},
   onOpenAddSchedule = () => {}
 }) {
-  // Compute fallback / live values
-  const activeTalents = talents.filter((t) => t.status !== 'unavailable');
-  const totalTalentsCount = talents.length;
-  const activeTalentsCount = stats?.activeTalents ?? activeTalents.length;
+  // Safe stats values
+  const activeTalentsCount = stats.activeTalents ?? talents.filter((t) => t.status === 'available').length;
+  const totalTalentsCount = stats.totalTalents ?? talents.length;
+  const activeProjectsCount = stats.activeProjects ?? projects.filter((p) => p.status_stage !== 'completed').length;
+  const pendingLeadsCount = stats.pendingLeads ?? projects.filter((p) => p.status_stage === 'new_lead').length;
+  const weekShootsCount = stats.weekShoots ?? schedules.filter((s) => (s.event_type || '').toLowerCase().includes('shoot')).length;
 
-  const activeProjects = projects.filter((p) => p.status_stage !== 'completed');
-  const activeProjectsCount = stats?.activeProjects ?? activeProjects.length;
+  // Compute total pipeline value from projects in Rupiah (IDR)
+  const totalPipelineVal = projects.reduce((acc, p) => {
+    if (!p.budget_range) return acc + 50000000;
+    const str = p.budget_range;
+    if (str.includes('250.000.000+') || str.includes('300.000.000') || str.includes('25,000+')) return acc + 250000000;
+    if (str.includes('180.000.000') || str.includes('250.000.000') || str.includes('280.000.000')) return acc + 200000000;
+    if (str.includes('120.000.000') || str.includes('150.000.000') || str.includes('160.000.000')) return acc + 140000000;
+    if (str.includes('80.000.000') || str.includes('100.000.000')) return acc + 90000000;
+    if (str.includes('50.000.000')) return acc + 75000000;
+    if (str.includes('25.000.000')) return acc + 37500000;
+    return acc + 50000000;
+  }, 0);
 
-  const pendingLeads = projects.filter((p) => p.status_stage === 'new_lead');
-  const pendingLeadsCount = stats?.pendingLeads ?? pendingLeads.length;
-
-  // Approximate pipeline value
-  const totalPipelineVal = projects
-    .filter((p) => p.status_stage !== 'completed')
-    .reduce((acc, p) => {
-      const match = (p.budget_range || '').match(/\$([0-9,]+)/);
-      if (match) {
-        const num = parseInt(match[1].replace(/,/g, ''), 10);
-        return acc + (isNaN(num) ? 0 : num);
-      }
-      return acc + 10000; // default estimated average if unparsed
-    }, 0);
-
-  const formattedPipelineVal = new Intl.NumberFormat('en-US', {
+  const formattedPipelineVal = new Intl.NumberFormat('id-ID', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'IDR',
     maximumFractionDigits: 0
   }).format(totalPipelineVal);
 
-  // Shoots scheduled
-  const shootsList = schedules.filter(
-    (s) => (s.event_type || '').toLowerCase().includes('shoot') || (s.event_type || '').toLowerCase() === 'shooting'
-  );
-  const weekShootsCount = stats?.weekShoots ?? shootsList.length;
+  // Breakdown counts for pipeline stages
+  const stages = [
+    { key: 'new_lead', label: 'New Leads', color: 'var(--color-accent-blue-light)' },
+    { key: 'quotation_sent', label: 'Quotation Sent', color: 'var(--color-accent-purple-light)' },
+    { key: 'confirmed', label: 'Confirmed', color: 'var(--color-accent-pink)' },
+    { key: 'in_execution', label: 'In Execution', color: 'var(--color-accent-amber)' },
+    { key: 'completed', label: 'Completed', color: 'var(--color-accent-emerald)' }
+  ];
 
-  // Category counts
+  const stageCounts = stages.map((st) => ({
+    ...st,
+    count: projects.filter((p) => (p.status_stage || 'new_lead') === st.key).length
+  }));
+
+  // Breakdown of talents by Category
   const categories = ['Model', 'Influencer', 'Photographer', 'Videographer', 'Designer'];
   const categoryCounts = categories.map((cat) => ({
     name: cat,
     count: talents.filter((t) => (t.category || '').toLowerCase() === cat.toLowerCase()).length
   }));
 
-  // Pipeline stage breakdown
-  const stages = [
-    { key: 'new_lead', label: 'New Leads', color: 'var(--color-accent-blue-light)' },
-    { key: 'quotation_sent', label: 'Quotation Sent', color: 'var(--color-accent-purple-light)' },
-    { key: 'confirmed', label: 'Confirmed', color: 'var(--color-accent-cyan)' },
-    { key: 'in_execution', label: 'In Execution', color: 'var(--color-accent-amber-light)' },
-    { key: 'completed', label: 'Completed', color: 'var(--color-accent-emerald-light)' }
-  ];
+  // Recent 4 projects
+  const recentProjects = [...projects]
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+    .slice(0, 4);
 
-  const stageCounts = stages.map((stage) => ({
-    ...stage,
-    count: projects.filter((p) => p.status_stage === stage.key).length
-  }));
-
-  // Recent 4 inquiries / projects
-  const recentProjects = [...projects].slice(0, 4);
-
-  // Upcoming 4 schedules
+  // Upcoming 4 schedule events
   const upcomingSchedules = [...schedules]
-    .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
+    .sort((a, b) => new Date(a.event_date || 0) - new Date(b.event_date || 0))
     .slice(0, 4);
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      {/* Top Banner with Quick Actions */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      {/* Top Banner Header */}
       <div
         className="glass-panel"
         style={{
           padding: '28px 32px',
-          border: '1px solid rgba(59, 130, 246, 0.25)',
+          border: '1px solid var(--color-border-medium)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '20px',
-          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)'
+          background: '#FFFFFF',
+          boxShadow: 'var(--shadow-md)'
         }}
       >
         <div>
@@ -111,7 +102,7 @@ export default function CRMOverview({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              color: 'var(--color-accent-blue-light)',
+              color: 'var(--color-accent-purple-light)',
               fontSize: '0.8rem',
               fontWeight: 700,
               textTransform: 'uppercase',
@@ -121,7 +112,7 @@ export default function CRMOverview({
           >
             <Layers size={16} /> Agency Command Center
           </div>
-          <h1 className="font-heading" style={{ fontSize: '1.9rem', marginBottom: '6px' }}>
+          <h1 className="font-heading" style={{ fontSize: '1.9rem', marginBottom: '6px', color: 'var(--color-text-primary)' }}>
             Executive <span className="text-gradient-vibrant">Operations Dashboard</span>
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.92rem', maxWidth: '600px' }}>
@@ -164,7 +155,7 @@ export default function CRMOverview({
         {/* Card 1: Active Talents */}
         <div
           className="kpi-card kpi-card-glow-purple"
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', background: '#FFFFFF' }}
           onClick={() => onNavigateTab('roster')}
           title="Click to view Talent Roster"
         >
@@ -173,7 +164,7 @@ export default function CRMOverview({
               <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Active Talents
               </span>
-              <div style={{ fontSize: '2.4rem', fontWeight: 800, lineHeight: 1.1, marginTop: '4px' }}>
+              <div style={{ fontSize: '2.4rem', fontWeight: 800, lineHeight: 1.1, marginTop: '4px', color: 'var(--color-text-primary)' }}>
                 {activeTalentsCount}
               </div>
             </div>
@@ -182,7 +173,7 @@ export default function CRMOverview({
                 width: '46px',
                 height: '46px',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(139, 92, 246, 0.15)',
+                background: '#F3E8FF',
                 color: 'var(--color-accent-purple-light)',
                 display: 'flex',
                 alignItems: 'center',
@@ -193,7 +184,7 @@ export default function CRMOverview({
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
-            <span style={{ color: 'var(--color-accent-emerald-light)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+            <span style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
               <CheckCircle2 size={14} /> {totalTalentsCount} Total in Database
             </span>
             <span style={{ color: 'var(--color-accent-purple-light)', display: 'inline-flex', alignItems: 'center', gap: '2px', fontWeight: 600 }}>
@@ -205,7 +196,7 @@ export default function CRMOverview({
         {/* Card 2: Active Projects & Pipeline Value */}
         <div
           className="kpi-card kpi-card-glow-blue"
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', background: '#FFFFFF' }}
           onClick={() => onNavigateTab('kanban')}
           title="Click to view Kanban Pipeline"
         >
@@ -214,7 +205,7 @@ export default function CRMOverview({
               <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Active Projects & Pipeline
               </span>
-              <div style={{ fontSize: '2.4rem', fontWeight: 800, lineHeight: 1.1, marginTop: '4px' }}>
+              <div style={{ fontSize: '2.4rem', fontWeight: 800, lineHeight: 1.1, marginTop: '4px', color: 'var(--color-text-primary)' }}>
                 {activeProjectsCount}
               </div>
             </div>
@@ -223,7 +214,7 @@ export default function CRMOverview({
                 width: '46px',
                 height: '46px',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(59, 130, 246, 0.15)',
+                background: '#DBEAFE',
                 color: 'var(--color-accent-blue-light)',
                 display: 'flex',
                 alignItems: 'center',
@@ -234,7 +225,7 @@ export default function CRMOverview({
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
-            <span style={{ color: 'var(--color-accent-cyan)', fontWeight: 700 }}>
+            <span style={{ color: '#2563EB', fontWeight: 700 }}>
               {formattedPipelineVal} Pipeline Value
             </span>
             <span style={{ color: 'var(--color-accent-blue-light)', display: 'inline-flex', alignItems: 'center', gap: '2px', fontWeight: 600 }}>
@@ -246,7 +237,7 @@ export default function CRMOverview({
         {/* Card 3: Pending New Inquiries */}
         <div
           className="kpi-card kpi-card-glow-pink"
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', background: '#FFFFFF' }}
           onClick={() => onNavigateTab('kanban')}
           title="Click to review Pending Inquiries"
         >
@@ -255,7 +246,7 @@ export default function CRMOverview({
               <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Pending New Inquiries
               </span>
-              <div style={{ fontSize: '2.4rem', fontWeight: 800, lineHeight: 1.1, marginTop: '4px' }}>
+              <div style={{ fontSize: '2.4rem', fontWeight: 800, lineHeight: 1.1, marginTop: '4px', color: 'var(--color-text-primary)' }}>
                 {pendingLeadsCount}
               </div>
             </div>
@@ -264,7 +255,7 @@ export default function CRMOverview({
                 width: '46px',
                 height: '46px',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(236, 72, 153, 0.15)',
+                background: '#FCE7F3',
                 color: 'var(--color-accent-pink)',
                 display: 'flex',
                 alignItems: 'center',
@@ -287,7 +278,7 @@ export default function CRMOverview({
         {/* Card 4: Upcoming Shoots This Week */}
         <div
           className="kpi-card kpi-card-glow-amber"
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', background: '#FFFFFF' }}
           onClick={() => onNavigateTab('calendar')}
           title="Click to view Master Calendar"
         >
@@ -296,7 +287,7 @@ export default function CRMOverview({
               <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Production Shoots
               </span>
-              <div style={{ fontSize: '2.4rem', fontWeight: 800, lineHeight: 1.1, marginTop: '4px' }}>
+              <div style={{ fontSize: '2.4rem', fontWeight: 800, lineHeight: 1.1, marginTop: '4px', color: 'var(--color-text-primary)' }}>
                 {weekShootsCount}
               </div>
             </div>
@@ -305,8 +296,8 @@ export default function CRMOverview({
                 width: '46px',
                 height: '46px',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(245, 158, 11, 0.15)',
-                color: 'var(--color-accent-amber-light)',
+                background: '#FEF3C7',
+                color: '#D97706',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
@@ -316,10 +307,10 @@ export default function CRMOverview({
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
-            <span style={{ color: 'var(--color-accent-amber-light)', fontWeight: 600 }}>
+            <span style={{ color: '#D97706', fontWeight: 600 }}>
               {schedules.length} Total Calendar Events
             </span>
-            <span style={{ color: 'var(--color-accent-amber-light)', display: 'inline-flex', alignItems: 'center', gap: '2px', fontWeight: 600 }}>
+            <span style={{ color: '#D97706', display: 'inline-flex', alignItems: 'center', gap: '2px', fontWeight: 600 }}>
               Calendar <ChevronRight size={14} />
             </span>
           </div>
@@ -329,11 +320,11 @@ export default function CRMOverview({
       {/* Visual Breakdowns Section (2 Columns) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px' }}>
         {/* Pipeline Stage Distribution */}
-        <div className="glass-card" style={{ padding: '24px' }}>
+        <div className="glass-card" style={{ padding: '24px', background: '#FFFFFF' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <TrendingUp size={18} color="var(--color-accent-blue-light)" />
-              <h3 style={{ fontSize: '1.15rem' }}>Kanban Pipeline Flow</h3>
+              <h3 style={{ fontSize: '1.15rem', color: 'var(--color-text-primary)' }}>Kanban Pipeline Flow</h3>
             </div>
             <button
               type="button"
@@ -359,7 +350,7 @@ export default function CRMOverview({
                   <div
                     style={{
                       height: '8px',
-                      background: 'rgba(255, 255, 255, 0.06)',
+                      background: '#F1F5F9',
                       borderRadius: 'var(--radius-full)',
                       overflow: 'hidden'
                     }}
@@ -381,11 +372,11 @@ export default function CRMOverview({
         </div>
 
         {/* Roster Category Mix */}
-        <div className="glass-card" style={{ padding: '24px' }}>
+        <div className="glass-card" style={{ padding: '24px', background: '#FFFFFF' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Users size={18} color="var(--color-accent-purple-light)" />
-              <h3 style={{ fontSize: '1.15rem' }}>Talent Roster by Category</h3>
+              <h3 style={{ fontSize: '1.15rem', color: 'var(--color-text-primary)' }}>Talent Roster by Category</h3>
             </div>
             <button
               type="button"
@@ -402,8 +393,8 @@ export default function CRMOverview({
               <div
                 key={cat.name}
                 style={{
-                  background: 'rgba(15, 23, 42, 0.5)',
-                  border: '1px solid var(--color-border-subtle)',
+                  background: '#F8FAFC',
+                  border: '1px solid var(--color-border-medium)',
                   borderRadius: 'var(--radius-md)',
                   padding: '12px',
                   textAlign: 'center'
@@ -412,7 +403,7 @@ export default function CRMOverview({
                 <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-accent-purple-light)' }}>
                   {cat.count}
                 </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginTop: '2px', fontWeight: 600 }}>
                   {cat.name}s
                 </div>
               </div>
@@ -423,16 +414,16 @@ export default function CRMOverview({
             style={{
               padding: '12px 16px',
               borderRadius: 'var(--radius-md)',
-              background: 'rgba(16, 185, 129, 0.08)',
-              border: '1px solid rgba(16, 185, 129, 0.2)',
+              background: '#D1FAE5',
+              border: '1px solid #A7F3D0',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               fontSize: '0.85rem'
             }}
           >
-            <span style={{ color: 'var(--color-text-secondary)' }}>Overall Roster Availability:</span>
-            <span style={{ color: 'var(--color-accent-emerald-light)', fontWeight: 700 }}>
+            <span style={{ color: '#065F46', fontWeight: 600 }}>Overall Roster Availability:</span>
+            <span style={{ color: '#047857', fontWeight: 800 }}>
               {talents.length > 0 ? Math.round((activeTalentsCount / totalTalentsCount) * 100) : 0}% Active & Ready
             </span>
           </div>
@@ -442,9 +433,9 @@ export default function CRMOverview({
       {/* Recent Inquiries & Upcoming Calendar Schedule Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px' }}>
         {/* Recent Pipeline Inquiries */}
-        <div className="glass-card" style={{ padding: '24px' }}>
+        <div className="glass-card" style={{ padding: '24px', background: '#FFFFFF' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '1.15rem' }}>Recent Client Project Leads</h3>
+            <h3 style={{ fontSize: '1.15rem', color: 'var(--color-text-primary)' }}>Recent Client Project Leads</h3>
             <button
               type="button"
               onClick={() => onNavigateTab('kanban')}
@@ -491,21 +482,21 @@ export default function CRMOverview({
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '12px 14px',
-                      background: 'rgba(15, 23, 42, 0.45)',
+                      background: '#F8FAFC',
                       borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--color-border-subtle)'
+                      border: '1px solid var(--color-border-medium)'
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>{p.brand_name}</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text-primary)' }}>{p.brand_name}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                        {p.project_title} &bull; {p.budget_range || '$5K-$10K'}
+                        {p.project_title} &bull; {p.budget_range || 'Rp 50.000.000 - Rp 100.000.000'}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <span className={`badge ${badgeClass}`}>{stageLabel}</span>
                       {p.talent_name && (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-purple-light)', marginTop: '4px' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-purple-light)', marginTop: '4px', fontWeight: 600 }}>
                           {p.talent_name}
                         </div>
                       )}
@@ -518,13 +509,13 @@ export default function CRMOverview({
         </div>
 
         {/* Upcoming Production Schedule */}
-        <div className="glass-card" style={{ padding: '24px' }}>
+        <div className="glass-card" style={{ padding: '24px', background: '#FFFFFF' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '1.15rem' }}>Upcoming Production Schedule</h3>
+            <h3 style={{ fontSize: '1.15rem', color: 'var(--color-text-primary)' }}>Upcoming Production Schedule</h3>
             <button
               type="button"
               onClick={() => onNavigateTab('calendar')}
-              style={{ fontSize: '0.82rem', color: 'var(--color-accent-amber-light)', fontWeight: 600 }}
+              style={{ fontSize: '0.82rem', color: '#D97706', fontWeight: 600 }}
             >
               View Calendar ({schedules.length})
             </button>
@@ -540,12 +531,12 @@ export default function CRMOverview({
                 const type = (s.event_type || '').toLowerCase();
                 const badgeStyle =
                   type.includes('shoot')
-                    ? { bg: 'rgba(139, 92, 246, 0.15)', color: '#DDD6FE', border: 'rgba(139, 92, 246, 0.4)', icon: '🟣 Shoot' }
+                    ? { bg: '#F3E8FF', color: '#6B21A8', border: '#D8B4FE', icon: '🟣 Shoot' }
                     : type.includes('post') || type.includes('publish')
-                    ? { bg: 'rgba(59, 130, 246, 0.15)', color: '#BFDBFE', border: 'rgba(59, 130, 246, 0.4)', icon: '🔵 Post' }
+                    ? { bg: '#DBEAFE', color: '#1E40AF', border: '#93C5FD', icon: '🔵 Post' }
                     : type.includes('fitting') || type.includes('meeting')
-                    ? { bg: 'rgba(245, 158, 11, 0.15)', color: '#FDE68A', border: 'rgba(245, 158, 11, 0.4)', icon: '🟠 Meeting' }
-                    : { bg: 'rgba(244, 63, 94, 0.15)', color: '#FECDD3', border: 'rgba(244, 63, 94, 0.4)', icon: '🔴 Payment' };
+                    ? { bg: '#FEF3C7', color: '#92400E', border: '#FDE68A', icon: '🟠 Meeting' }
+                    : { bg: '#FFE4E6', color: '#9F1239', border: '#FECDD3', icon: '🔴 Payment' };
 
                 return (
                   <div
@@ -555,13 +546,13 @@ export default function CRMOverview({
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '12px 14px',
-                      background: 'rgba(15, 23, 42, 0.45)',
+                      background: '#F8FAFC',
                       borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--color-border-subtle)'
+                      border: '1px solid var(--color-border-medium)'
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{s.title}</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--color-text-primary)' }}>{s.title}</div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Clock size={12} /> {s.event_date} {s.talent_name && `• ${s.talent_name}`}
                       </div>

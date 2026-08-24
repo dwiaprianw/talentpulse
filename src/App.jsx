@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchTalents, fetchStats, fetchProjects, fetchSchedules } from './services/api';
+import { useAuth } from './services/AuthContext';
 import Navbar from './components/common/Navbar';
 import Toast from './components/common/Toast';
+import AdminLoginModal from './components/auth/AdminLoginModal';
 import HeroBanner from './components/public/HeroBanner';
 import TalentCatalog from './components/public/TalentCatalog';
 import TalentDetailModal from './components/public/TalentDetailModal';
@@ -23,11 +25,14 @@ import {
   Calendar,
   TrendingUp,
   LayoutDashboard,
-  Layers,
-  Plus
+  Lock,
+  ArrowRight,
+  ShieldAlert
 } from 'lucide-react';
 
 export default function App() {
+  const { isAuthenticated, userRole, currentUser } = useAuth();
+
   const [currentView, setCurrentView] = useState('public'); // 'public' | 'crm'
   const [crmTab, setCrmTab] = useState('overview'); // 'overview' | 'roster' | 'kanban' | 'calendar'
   
@@ -40,6 +45,7 @@ export default function App() {
   const [error, setError] = useState(null);
 
   // Modals state
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [detailModalTalent, setDetailModalTalent] = useState(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [bookingTalent, setBookingTalent] = useState(null);
@@ -113,7 +119,6 @@ export default function App() {
   const handleBookingSuccess = (createdProject, formData) => {
     if (createdProject) {
       setProjects((prev) => {
-        // Prevent duplicate if already added
         const exists = prev.some((p) => p.id === createdProject.id);
         if (exists) return prev;
         return [createdProject, ...prev];
@@ -130,8 +135,13 @@ export default function App() {
     });
   };
 
-  // View switch handler with background sync
+  // View switch handler with auth check & background sync
   const handleViewChange = (view) => {
+    if (view === 'crm' && !isAuthenticated) {
+      setLoginModalOpen(true);
+      return;
+    }
+
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (view === 'crm') {
@@ -144,7 +154,11 @@ export default function App() {
 
   // CRM Update Handlers
   const handleTalentUpdated = (updatedTalent) => {
-    setTalents((prev) => prev.map((t) => (t.id === updatedTalent.id ? updatedTalent : t)));
+    if (Array.isArray(updatedTalent)) {
+      setTalents(updatedTalent);
+    } else {
+      setTalents((prev) => prev.map((t) => (t.id === updatedTalent.id ? updatedTalent : t)));
+    }
     fetchStats().then(setStats).catch(() => {});
     fetchProjects().then(setProjects).catch(() => {});
   };
@@ -155,7 +169,11 @@ export default function App() {
   };
 
   const handleProjectUpdated = (updatedProject) => {
-    setProjects((prev) => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)));
+    if (Array.isArray(updatedProject)) {
+      setProjects(updatedProject);
+    } else {
+      setProjects((prev) => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)));
+    }
     fetchStats().then(setStats).catch(() => {});
   };
 
@@ -179,11 +197,12 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Navigation Bar with View Switcher */}
+      {/* Navigation Bar with View Switcher & RBAC */}
       <Navbar
         currentView={currentView}
         onViewChange={handleViewChange}
         onOpenInquiry={() => handleOpenBooking(null)}
+        onOpenLoginModal={() => setLoginModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -210,19 +229,19 @@ export default function App() {
               id="agency-highlights"
               style={{
                 padding: '64px 0',
-                borderTop: '1px solid var(--color-border-subtle)',
-                background: 'rgba(15, 23, 42, 0.4)'
+                borderTop: '1px solid var(--color-border-medium)',
+                background: '#F8FAFC'
               }}
             >
               <div className="container">
                 <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 48px' }}>
                   <span
                     className="badge badge-tag"
-                    style={{ marginBottom: '12px', display: 'inline-flex', padding: '4px 14px' }}
+                    style={{ marginBottom: '12px', display: 'inline-flex', padding: '4px 14px', background: '#F3E8FF', color: '#6D28D9', border: '1px solid #D8B4FE' }}
                   >
                     ✨ Why Leading Brands Choose TalentPulse
                   </span>
-                  <h2 className="font-heading" style={{ fontSize: '2.25rem', marginBottom: '12px' }}>
+                  <h2 className="font-heading" style={{ fontSize: '2.25rem', marginBottom: '12px', color: 'var(--color-text-primary)' }}>
                     Full-Service Talent & <span className="text-gradient-vibrant">Production Infrastructure</span>
                   </h2>
                   <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem' }}>
@@ -231,13 +250,13 @@ export default function App() {
                 </div>
 
                 <div className="grid-responsive" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-                  <div className="glass-card" style={{ padding: '28px' }}>
+                  <div className="glass-card" style={{ padding: '28px', background: '#FFFFFF', border: '1px solid var(--color-border-medium)', boxShadow: 'var(--shadow-md)' }}>
                     <div
                       style={{
                         width: '48px',
                         height: '48px',
                         borderRadius: 'var(--radius-md)',
-                        background: 'rgba(139, 92, 246, 0.15)',
+                        background: '#F3E8FF',
                         color: 'var(--color-accent-purple-light)',
                         display: 'flex',
                         alignItems: 'center',
@@ -247,19 +266,19 @@ export default function App() {
                     >
                       <ShieldCheck size={24} />
                     </div>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>Legal & Global Rights Clearance</h3>
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: 'var(--color-text-primary)' }}>Legal & Global Rights Clearance</h3>
                     <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', lineHeight: 1.55 }}>
                       Complete usage licensing across digital, OTT, print, and billboard buyouts. Full contract indemnity and SLA guarantees.
                     </p>
                   </div>
 
-                  <div className="glass-card" style={{ padding: '28px' }}>
+                  <div className="glass-card" style={{ padding: '28px', background: '#FFFFFF', border: '1px solid var(--color-border-medium)', boxShadow: 'var(--shadow-md)' }}>
                     <div
                       style={{
                         width: '48px',
                         height: '48px',
                         borderRadius: 'var(--radius-md)',
-                        background: 'rgba(236, 72, 153, 0.15)',
+                        background: '#FCE7F3',
                         color: 'var(--color-accent-pink)',
                         display: 'flex',
                         alignItems: 'center',
@@ -269,20 +288,20 @@ export default function App() {
                     >
                       <Zap size={24} />
                     </div>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>Rapid Production Turnaround</h3>
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: 'var(--color-text-primary)' }}>Rapid Production Turnaround</h3>
                     <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', lineHeight: 1.55 }}>
                       Direct talent scheduling, pre-production logistics, studio bookings, and high-speed delivery within 48 to 72 hours.
                     </p>
                   </div>
 
-                  <div className="glass-card" style={{ padding: '28px' }}>
+                  <div className="glass-card" style={{ padding: '28px', background: '#FFFFFF', border: '1px solid var(--color-border-medium)', boxShadow: 'var(--shadow-md)' }}>
                     <div
                       style={{
                         width: '48px',
                         height: '48px',
                         borderRadius: 'var(--radius-md)',
-                        background: 'rgba(16, 185, 129, 0.15)',
-                        color: 'var(--color-accent-emerald)',
+                        background: '#D1FAE5',
+                        color: '#059669',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -291,7 +310,7 @@ export default function App() {
                     >
                       <Globe2 size={24} />
                     </div>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>Multi-Market Reach</h3>
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: 'var(--color-text-primary)' }}>Multi-Market Reach</h3>
                     <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', lineHeight: 1.55 }}>
                       International roster across Paris, New York, Tokyo, Milan, and London. Global currency billing and multilingual support.
                     </p>
@@ -305,8 +324,8 @@ export default function App() {
               id="booking-cta"
               style={{
                 padding: '60px 0',
-                background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.6) 0%, rgba(30, 41, 59, 0.8) 100%)',
-                borderTop: '1px solid var(--color-border-subtle)'
+                background: 'linear-gradient(180deg, #F8FAFC 0%, #EEF2FF 100%)',
+                borderTop: '1px solid var(--color-border-medium)'
               }}
             >
               <div className="container">
@@ -314,8 +333,9 @@ export default function App() {
                   className="glass-panel animate-fade-in"
                   style={{
                     padding: '48px 36px',
-                    border: '1px solid rgba(139, 92, 246, 0.3)',
-                    boxShadow: 'var(--shadow-glass), var(--shadow-glow-purple)',
+                    background: '#FFFFFF',
+                    border: '1px solid var(--color-border-medium)',
+                    boxShadow: 'var(--shadow-xl)',
                     display: 'flex',
                     flexWrap: 'wrap',
                     alignItems: 'center',
@@ -331,7 +351,7 @@ export default function App() {
                         gap: '6px',
                         padding: '4px 12px',
                         borderRadius: 'var(--radius-full)',
-                        background: 'rgba(236, 72, 153, 0.15)',
+                        background: '#FCE7F3',
                         color: 'var(--color-accent-pink)',
                         fontSize: '0.75rem',
                         fontWeight: 700,
@@ -341,7 +361,7 @@ export default function App() {
                     >
                       <Sparkles size={14} /> Start Your Campaign
                     </div>
-                    <h2 className="font-heading" style={{ fontSize: '2.25rem', marginBottom: '12px', lineHeight: 1.2 }}>
+                    <h2 className="font-heading" style={{ fontSize: '2.25rem', marginBottom: '12px', lineHeight: 1.2, color: 'var(--color-text-primary)' }}>
                       Ready to Collaborate with <span className="text-gradient-purple-pink">Top Creative Talents</span>?
                     </h2>
                     <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', lineHeight: 1.6 }}>
@@ -362,9 +382,69 @@ export default function App() {
               </div>
             </section>
           </>
+        ) : !isAuthenticated ? (
+          /* ==========================================================================
+             RBAC ACCESS DENIED GUARD OVERLAY
+             ========================================================================== */
+          <div className="container" style={{ padding: '80px 24px', textAlign: 'center' }}>
+            <div
+              className="glass-card animate-scale-in"
+              style={{
+                maxWidth: '520px',
+                margin: '0 auto',
+                padding: '48px 32px',
+                background: '#FFFFFF',
+                border: '1px solid var(--color-border-medium)',
+                boxShadow: 'var(--shadow-xl)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '16px'
+              }}
+            >
+              <div
+                style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: 'var(--radius-full)',
+                  background: '#FFE4E6',
+                  color: '#BE123C',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 14px rgba(190, 18, 60, 0.2)'
+                }}
+              >
+                <ShieldAlert size={32} />
+              </div>
+              <h2 className="font-heading" style={{ fontSize: '1.6rem', color: 'var(--color-text-primary)' }}>
+                Akses Terproteksi (RBAC)
+              </h2>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.94rem', lineHeight: 1.5 }}>
+                Halaman <strong>Agency CRM Portal</strong> hanya dapat diakses oleh akun terautentikasi (Super Admin atau Account Manager).
+              </p>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => setCurrentView('public')}
+                  className="btn btn-secondary"
+                >
+                  Kembali ke Public Showcase
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLoginModalOpen(true)}
+                  className="btn btn-primary"
+                >
+                  <Lock size={16} /> Login ke Admin CRM
+                </button>
+              </div>
+            </div>
+          </div>
         ) : (
           /* ==========================================================================
-             AGENCY CRM PORTAL SUITE (Task 5: Overview, Roster, Kanban, Calendar)
+             AGENCY CRM PORTAL SUITE (AUTHENTICATED)
              ========================================================================== */
           <div className="container" style={{ padding: '36px 24px 64px' }}>
             {/* CRM Navigation Sub-Header & Tab Selector */}
@@ -442,6 +522,7 @@ export default function App() {
               <TalentRoster
                 talents={talents}
                 onTalentUpdated={handleTalentUpdated}
+                onUpdateTalents={handleTalentUpdated}
                 onTalentCreated={handleTalentCreated}
                 onViewTalentDetails={handleOpenDetail}
                 addToast={addToast}
@@ -453,8 +534,10 @@ export default function App() {
                 projects={projects}
                 talents={talents}
                 onProjectUpdated={handleProjectUpdated}
+                onUpdateProjects={handleProjectUpdated}
                 onOpenBooking={() => handleOpenBooking(null)}
                 addToast={addToast}
+                onTriggerToast={addToast}
               />
             )}
 
@@ -471,6 +554,20 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Admin Login Modal (RBAC) */}
+      <AdminLoginModal
+        isOpen={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+        onSuccess={() => {
+          setCurrentView('crm');
+          addToast({
+            type: 'success',
+            title: 'Berhasil Login!',
+            message: `Selamat datang kembali di Admin CRM.`
+          });
+        }}
+      />
 
       {/* Talent Detail Modal (Public + CRM) */}
       <TalentDetailModal
@@ -514,9 +611,10 @@ export default function App() {
       {/* Footer */}
       <footer
         style={{
-          borderTop: '1px solid var(--color-border-subtle)',
+          borderTop: '1px solid var(--color-border-medium)',
           padding: '32px 0',
-          background: 'rgba(15, 23, 42, 0.9)',
+          background: '#FFFFFF',
+          color: 'var(--color-text-primary)',
           marginTop: 'auto'
         }}
       >
@@ -544,16 +642,36 @@ export default function App() {
             >
               <Sparkles size={16} color="#FFFFFF" />
             </div>
-            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
               TALENT<span className="text-gradient-purple-pink">PULSE</span>
             </span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-              &bull; Creative Agency CRM & Showcase
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+              &bull; Creative Talent & Production Showcase
             </span>
           </div>
 
-          <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
-            &copy; 2026 TalentPulse Agency. All rights reserved. Powered by React 18 & SQLite.
+          <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span>&copy; 2026 TalentPulse Agency. All rights reserved.</span>
+            {!isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => setLoginModalOpen(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--color-text-muted)',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                title="Akses Internal Staff Agency"
+              >
+                &bull; Staff Login 🔒
+              </button>
+            )}
           </div>
         </div>
       </footer>

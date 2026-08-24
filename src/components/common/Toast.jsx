@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 /**
- * Toast Notification Item Component
+ * Toast Notification Item Component (Light Theme)
  */
 function ToastItem({ toast, onDismiss }) {
   useEffect(() => {
@@ -15,10 +15,10 @@ function ToastItem({ toast, onDismiss }) {
   }, [toast, onDismiss]);
 
   const icons = {
-    success: <CheckCircle size={20} color="#34D399" />,
-    error: <AlertCircle size={20} color="#FB7185" />,
-    warning: <AlertTriangle size={20} color="#FBBF24" />,
-    info: <Info size={20} color="#60A5FA" />
+    success: <CheckCircle size={20} color="#059669" />,
+    error: <AlertCircle size={20} color="#E11D48" />,
+    warning: <AlertTriangle size={20} color="#D97706" />,
+    info: <Info size={20} color="#2563EB" />
   };
 
   const borderColors = {
@@ -29,10 +29,10 @@ function ToastItem({ toast, onDismiss }) {
   };
 
   const glowShadows = {
-    success: '0 8px 24px rgba(16, 185, 129, 0.25)',
-    error: '0 8px 24px rgba(244, 63, 94, 0.25)',
-    warning: '0 8px 24px rgba(245, 158, 11, 0.25)',
-    info: '0 8px 24px rgba(59, 130, 246, 0.25)'
+    success: '0 8px 24px rgba(16, 185, 129, 0.15)',
+    error: '0 8px 24px rgba(244, 63, 94, 0.15)',
+    warning: '0 8px 24px rgba(245, 158, 11, 0.15)',
+    info: '0 8px 24px rgba(59, 130, 246, 0.15)'
   };
 
   const type = toast.type || 'info';
@@ -45,7 +45,7 @@ function ToastItem({ toast, onDismiss }) {
         display: 'flex',
         alignItems: 'flex-start',
         gap: '12px',
-        background: 'rgba(15, 23, 42, 0.92)',
+        background: '#FFFFFF',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         border: `1px solid ${borderColors[type] || borderColors.info}`,
@@ -67,7 +67,7 @@ function ToastItem({ toast, onDismiss }) {
           <h4
             style={{
               fontSize: '0.95rem',
-              fontWeight: 600,
+              fontWeight: 700,
               marginBottom: '2px',
               color: 'var(--color-text-primary)'
             }}
@@ -102,7 +102,7 @@ function ToastItem({ toast, onDismiss }) {
           justifyContent: 'center',
           transition: 'color var(--transition-fast)'
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = '#FFFFFF')}
+        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-text-primary)')}
         onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text-muted)')}
       >
         <X size={16} />

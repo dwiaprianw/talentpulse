@@ -124,7 +124,7 @@ export default function TalentCatalog({
             >
               <Users size={13} /> Official Agency Roster
             </span>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
               ({filteredTalents.length} {filteredTalents.length === 1 ? 'Talent' : 'Talents'} matching)
             </span>
           </div>
@@ -133,7 +133,8 @@ export default function TalentCatalog({
             className="font-heading"
             style={{
               fontSize: 'clamp(1.75rem, 3vw, 2.35rem)',
-              lineHeight: 1.2
+              lineHeight: 1.2,
+              color: 'var(--color-text-primary)'
             }}
           >
             Explore Curated <span className="text-gradient-purple-pink">Creator Roster</span>
@@ -151,7 +152,10 @@ export default function TalentCatalog({
             marginBottom: '32px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '16px',
+            background: '#FFFFFF',
+            boxShadow: 'var(--shadow-md)',
+            border: '1px solid var(--color-border-medium)'
           }}
         >
           {/* Top Row: Search Input & Sort & Status Toggle */}
@@ -227,14 +231,14 @@ export default function TalentCatalog({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  background: 'rgba(15, 23, 42, 0.6)',
+                  background: '#F8FAFC',
                   padding: '4px 12px',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border-subtle)'
+                  border: '1px solid var(--color-border-medium)'
                 }}
               >
-                <ArrowUpDown size={14} color="var(--color-text-muted)" />
-                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Sort:</span>
+                <ArrowUpDown size={14} color="var(--color-text-secondary)" />
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Sort:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
@@ -243,21 +247,21 @@ export default function TalentCatalog({
                     border: 'none',
                     color: 'var(--color-text-primary)',
                     fontSize: '0.85rem',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     outline: 'none',
                     cursor: 'pointer'
                   }}
                 >
-                  <option value="featured" style={{ background: '#1E293B', color: '#F8FAFC' }}>
+                  <option value="featured" style={{ background: '#FFFFFF', color: '#0F172A' }}>
                     Featured
                   </option>
-                  <option value="followers" style={{ background: '#1E293B', color: '#F8FAFC' }}>
+                  <option value="followers" style={{ background: '#FFFFFF', color: '#0F172A' }}>
                     Most Followers
                   </option>
-                  <option value="engagement" style={{ background: '#1E293B', color: '#F8FAFC' }}>
+                  <option value="engagement" style={{ background: '#FFFFFF', color: '#0F172A' }}>
                     Highest Engagement
                   </option>
-                  <option value="name" style={{ background: '#1E293B', color: '#F8FAFC' }}>
+                  <option value="name" style={{ background: '#FFFFFF', color: '#0F172A' }}>
                     Name (A-Z)
                   </option>
                 </select>
@@ -271,8 +275,8 @@ export default function TalentCatalog({
                   gap: '8px',
                   cursor: 'pointer',
                   fontSize: '0.85rem',
-                  fontWeight: 500,
-                  color: availableOnly ? 'var(--color-accent-emerald-light)' : 'var(--color-text-secondary)',
+                  fontWeight: 600,
+                  color: availableOnly ? '#059669' : 'var(--color-text-secondary)',
                   userSelect: 'none'
                 }}
               >
@@ -299,15 +303,15 @@ export default function TalentCatalog({
               alignItems: 'center',
               gap: '10px',
               flexWrap: 'wrap',
-              borderTop: '1px solid var(--color-border-subtle)',
+              borderTop: '1px solid var(--color-border-medium)',
               paddingTop: '14px'
             }}
           >
             <span
               style={{
                 fontSize: '0.8rem',
-                color: 'var(--color-text-muted)',
-                fontWeight: 600,
+                color: 'var(--color-text-secondary)',
+                fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
                 marginRight: '4px'
@@ -332,12 +336,12 @@ export default function TalentCatalog({
                     cursor: 'pointer',
                     background: isActive
                       ? 'linear-gradient(135deg, var(--color-accent-purple) 0%, var(--color-accent-pink) 100%)'
-                      : 'rgba(255, 255, 255, 0.05)',
+                      : '#FFFFFF',
                     color: isActive ? '#FFFFFF' : 'var(--color-text-secondary)',
                     border: isActive
-                      ? '1px solid rgba(236, 72, 153, 0.4)'
-                      : '1px solid var(--color-border-subtle)',
-                    boxShadow: isActive ? 'var(--shadow-glow-purple)' : 'none'
+                      ? '1px solid transparent'
+                      : '1px solid var(--color-border-medium)',
+                    boxShadow: isActive ? '0 2px 8px rgba(139, 92, 246, 0.3)' : 'var(--shadow-sm)'
                   }}
                 >
                   {pill.label}
@@ -409,7 +413,9 @@ export default function TalentCatalog({
               padding: '60px 24px',
               textAlign: 'center',
               maxWidth: '520px',
-              margin: '0 auto'
+              margin: '0 auto',
+              background: '#FFFFFF',
+              border: '1px solid var(--color-border-medium)'
             }}
           >
             <div
@@ -417,7 +423,7 @@ export default function TalentCatalog({
                 width: '56px',
                 height: '56px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(236, 72, 153, 0.15)',
+                background: '#FCE7F3',
                 color: 'var(--color-accent-pink)',
                 display: 'flex',
                 alignItems: 'center',
@@ -427,7 +433,7 @@ export default function TalentCatalog({
             >
               <Search size={28} />
             </div>
-            <h3 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>No Talents Match Your Criteria</h3>
+            <h3 style={{ fontSize: '1.25rem', marginBottom: '8px', color: 'var(--color-text-primary)' }}>No Talents Match Your Criteria</h3>
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '20px' }}>
               Try adjusting your category filter, clearing your search query, or checking back later.
             </p>

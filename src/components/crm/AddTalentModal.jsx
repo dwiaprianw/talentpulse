@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, UserPlus, Image, Sparkles, DollarSign, Tag, Users, Activity, Check } from 'lucide-react';
+import { X, UserPlus } from 'lucide-react';
 import { createTalent } from '../../services/api';
 
 const PRESET_AVATARS = [
@@ -27,8 +27,8 @@ export default function AddTalentModal({
     niche_tags: 'Editorial, Commercial, Fashion',
     followers: '250K',
     engagement_rate: '5.8%',
-    internal_fee: '$1,500 / day',
-    rate_card: '$3,200 / day',
+    internal_fee: 'Rp 15.000.000 / hari',
+    rate_card: 'Rp 32.000.000 / hari',
     status: 'available'
   });
 
@@ -49,7 +49,7 @@ export default function AddTalentModal({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.title.trim()) {
-      setError('Talent full name and professional title are required.');
+      setError('Nama lengkap talent dan profesi/spesialisasi wajib diisi.');
       return;
     }
 
@@ -57,7 +57,6 @@ export default function AddTalentModal({
       setSubmitting(true);
       setError(null);
 
-      // Format tags
       const tags = formData.niche_tags
         .split(',')
         .map((s) => s.trim())
@@ -72,8 +71,8 @@ export default function AddTalentModal({
         niche_tags: tags,
         followers: formData.followers.trim() || '100K',
         engagement_rate: formData.engagement_rate.trim() || '5.0%',
-        internal_fee: formData.internal_fee.trim() || '$1,000 / day',
-        rate_card: formData.rate_card.trim() || '$2,500 / day',
+        internal_fee: formData.internal_fee.trim() || 'Rp 15.000.000 / hari',
+        rate_card: formData.rate_card.trim() || 'Rp 32.000.000 / hari',
         status: formData.status
       };
 
@@ -82,7 +81,7 @@ export default function AddTalentModal({
       onClose();
     } catch (err) {
       console.error('Error adding talent:', err);
-      setError(err.message || 'Failed to register talent in database');
+      setError(err.message || 'Gagal meregistrasi talent ke database');
     } finally {
       setSubmitting(false);
     }
@@ -98,8 +97,9 @@ export default function AddTalentModal({
           maxHeight: '90vh',
           overflowY: 'auto',
           padding: '32px',
-          border: '1px solid rgba(139, 92, 246, 0.3)',
-          boxShadow: 'var(--shadow-glass), var(--shadow-glow-purple)'
+          background: '#FFFFFF',
+          border: '1px solid var(--color-border-medium)',
+          boxShadow: 'var(--shadow-xl)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -121,11 +121,11 @@ export default function AddTalentModal({
               <UserPlus size={22} />
             </div>
             <div>
-              <h2 className="font-heading" style={{ fontSize: '1.4rem' }}>
-                Register New Talent
+              <h2 className="font-heading" style={{ fontSize: '1.4rem', color: 'var(--color-text-primary)' }}>
+                Registrasi Talent Baru
               </h2>
               <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
-                Add a creator or model to the agency roster and database
+                Tambahkan kreator atau model baru ke dalam database roster agency
               </p>
             </div>
           </div>
@@ -145,9 +145,9 @@ export default function AddTalentModal({
             style={{
               padding: '12px 16px',
               borderRadius: 'var(--radius-md)',
-              background: 'rgba(244, 63, 94, 0.15)',
-              border: '1px solid rgba(244, 63, 94, 0.3)',
-              color: '#FECDD3',
+              background: '#FFE4E6',
+              border: '1px solid #FECDD3',
+              color: '#BE123C',
               fontSize: '0.88rem',
               marginBottom: '20px'
             }}
@@ -161,14 +161,14 @@ export default function AddTalentModal({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
-                Full Legal / Stage Name *
+                Nama Lengkap / Stage Name *
               </label>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="e.g. Chloe Valentine"
+                placeholder="misal: Chloe Valentine"
                 required
                 className="glass-input"
               />
@@ -176,14 +176,14 @@ export default function AddTalentModal({
 
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
-                Talent Category *
+                Kategori Talent *
               </label>
               <select
                 name="category"
                 value={formData.category}
                 onChange={handleChange}
                 className="glass-input"
-                style={{ background: 'rgba(15, 23, 42, 0.9)' }}
+                style={{ background: '#FFFFFF', color: '#0F172A' }}
               >
                 <option value="Model">Model (Runway & Editorial)</option>
                 <option value="Influencer">Influencer & Creator</option>
@@ -199,14 +199,14 @@ export default function AddTalentModal({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
-                Professional Title / Role *
+                Profesi / Spesialisasi *
               </label>
               <input
                 type="text"
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
-                placeholder="e.g. Editorial Fashion & Commercial Model"
+                placeholder="misal: Model Editorial & Commercial Model"
                 required
                 className="glass-input"
               />
@@ -214,18 +214,18 @@ export default function AddTalentModal({
 
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
-                Initial Roster Status
+                Status Awal Availability
               </label>
               <select
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
                 className="glass-input"
-                style={{ background: 'rgba(15, 23, 42, 0.9)' }}
+                style={{ background: '#FFFFFF', color: '#0F172A' }}
               >
-                <option value="available">🟢 Available (Ready for booking)</option>
-                <option value="on_shoot">🟡 On Shooting (Currently booked)</option>
-                <option value="unavailable">🔴 Off Duty / Unavailable</option>
+                <option value="available">🟢 Available (Siap booking)</option>
+                <option value="on_shoot">🟡 On Shooting (Sedang ada proyek)</option>
+                <option value="unavailable">🔴 Off Duty / Tidak tersedia</option>
               </select>
             </div>
           </div>
@@ -233,7 +233,7 @@ export default function AddTalentModal({
           {/* Row 3: Avatar Presets & Custom URL */}
           <div>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '8px' }}>
-              Profile Avatar (Choose Preset or Enter URL)
+              Foto Profil Avatar (Pilih Preset atau Masukkan URL)
             </label>
             <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '8px' }}>
               {PRESET_AVATARS.map((url, idx) => (
@@ -261,7 +261,7 @@ export default function AddTalentModal({
               name="avatar_url"
               value={formData.avatar_url}
               onChange={handleChange}
-              placeholder="Or paste custom image URL"
+              placeholder="Atau tempel URL gambar kustom"
               className="glass-input"
               style={{ fontSize: '0.85rem' }}
             />
@@ -270,14 +270,14 @@ export default function AddTalentModal({
           {/* Row 4: Bio */}
           <div>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
-              Bio & Professional Highlights
+              Bio & Catatan Pengalaman
             </label>
             <textarea
               name="bio"
               value={formData.bio}
               onChange={handleChange}
               rows={2}
-              placeholder="Short bio covering editorial experience, past brand collaborations, and signature aesthetics..."
+              placeholder="Bio singkat mengenai pengalaman editorial, kolaborasi brand terdahulu, dan gaya khas..."
               className="glass-input"
               style={{ resize: 'vertical' }}
             />
@@ -286,14 +286,14 @@ export default function AddTalentModal({
           {/* Row 5: Niche Tags */}
           <div>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
-              Niche Tags (comma-separated)
+              Niche Tags (pisahkan dengan koma)
             </label>
             <input
               type="text"
               name="niche_tags"
               value={formData.niche_tags}
               onChange={handleChange}
-              placeholder="e.g. High Fashion, Editorial, Runway, Luxury"
+              placeholder="misal: High Fashion, Editorial, Runway, Luxury"
               className="glass-input"
             />
           </div>
@@ -330,14 +330,14 @@ export default function AddTalentModal({
 
             <div>
               <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '4px' }}>
-                Internal Fee (Cost)
+                Internal Fee (Modal)
               </label>
               <input
                 type="text"
                 name="internal_fee"
                 value={formData.internal_fee}
                 onChange={handleChange}
-                placeholder="$1,800 / day"
+                placeholder="Rp 18.000.000 / hari"
                 className="glass-input"
               />
             </div>
@@ -351,7 +351,7 @@ export default function AddTalentModal({
                 name="rate_card"
                 value={formData.rate_card}
                 onChange={handleChange}
-                placeholder="$3,500 / day"
+                placeholder="Rp 35.000.000 / hari"
                 className="glass-input"
               />
             </div>
@@ -365,7 +365,7 @@ export default function AddTalentModal({
               gap: '12px',
               marginTop: '12px',
               paddingTop: '16px',
-              borderTop: '1px solid var(--color-border-subtle)'
+              borderTop: '1px solid var(--color-border-medium)'
             }}
           >
             <button
@@ -374,7 +374,7 @@ export default function AddTalentModal({
               className="btn btn-secondary"
               disabled={submitting}
             >
-              Cancel
+              Batal
             </button>
 
             <button
@@ -383,7 +383,7 @@ export default function AddTalentModal({
               disabled={submitting}
               style={{ minWidth: '150px' }}
             >
-              {submitting ? 'Registering...' : 'Register Talent'}
+              {submitting ? 'Mendaftarkan...' : 'Simpan Talent'}
             </button>
           </div>
         </form>

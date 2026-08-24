@@ -1,21 +1,19 @@
 import React, { useState } from 'react';
-import { X, Calendar, Camera, Send, Users, Briefcase, FileText, Check } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Sparkles } from 'lucide-react';
 import { createSchedule } from '../../services/api';
 
 export default function AddScheduleModal({
   isOpen = false,
-  talents = [],
-  projects = [],
-  initialDate = '',
   onClose = () => {},
+  projects = [],
+  talents = [],
+  initialDate = '',
   onSuccess = () => {}
 }) {
-  const todayStr = new Date().toISOString().split('T')[0];
-
   const [formData, setFormData] = useState({
     title: '',
     event_type: 'shooting',
-    event_date: initialDate || todayStr,
+    event_date: initialDate || new Date().toISOString().split('T')[0],
     project_id: '',
     talent_id: '',
     notes: ''
@@ -32,24 +30,20 @@ export default function AddScheduleModal({
   };
 
   const handleProjectSelect = (e) => {
-    const projId = e.target.value;
-    const selectedProj = projects.find((p) => String(p.id) === String(projId));
+    const projectId = e.target.value;
+    const proj = projects.find((p) => String(p.id) === String(projectId));
     setFormData((prev) => ({
       ...prev,
-      project_id: projId,
-      // Auto-fill talent if project has assigned talent
-      talent_id: selectedProj?.talent_id ? String(selectedProj.talent_id) : prev.talent_id
+      project_id: projectId,
+      talent_id: proj && proj.talent_id ? proj.talent_id : prev.talent_id,
+      title: proj ? `${proj.brand_name} - Shoot Session` : prev.title
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title.trim()) {
-      setError('Event title is required.');
-      return;
-    }
-    if (!formData.event_date) {
-      setError('Event date is required.');
+    if (!formData.title.trim() || !formData.event_date) {
+      setError('Event title and scheduled date are required.');
       return;
     }
 
@@ -61,8 +55,8 @@ export default function AddScheduleModal({
         title: formData.title.trim(),
         event_type: formData.event_type,
         event_date: formData.event_date,
-        project_id: formData.project_id ? Number(formData.project_id) : null,
-        talent_id: formData.talent_id ? Number(formData.talent_id) : null,
+        project_id: formData.project_id || null,
+        talent_id: formData.talent_id || (talents.length > 0 ? talents[0].id : null),
         notes: formData.notes.trim()
       };
 
@@ -70,8 +64,8 @@ export default function AddScheduleModal({
       onSuccess(created);
       onClose();
     } catch (err) {
-      console.error('Error creating schedule:', err);
-      setError(err.message || 'Failed to add calendar schedule event');
+      console.error('Error adding schedule event:', err);
+      setError(err.message || 'Failed to record schedule event.');
     } finally {
       setSubmitting(false);
     }
@@ -83,38 +77,39 @@ export default function AddScheduleModal({
         className="glass-panel animate-scale-in"
         style={{
           width: '100%',
-          maxWidth: '580px',
+          maxWidth: '600px',
           maxHeight: '90vh',
           overflowY: 'auto',
           padding: '32px',
-          border: '1px solid rgba(245, 158, 11, 0.3)',
-          boxShadow: 'var(--shadow-glass), 0 0 25px rgba(245, 158, 11, 0.25)'
+          background: '#FFFFFF',
+          border: '1px solid var(--color-border-medium)',
+          boxShadow: 'var(--shadow-xl)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
               style={{
                 width: '42px',
                 height: '42px',
                 borderRadius: 'var(--radius-md)',
-                background: 'linear-gradient(135deg, var(--color-accent-amber) 0%, var(--color-accent-rose) 100%)',
+                background: 'linear-gradient(135deg, var(--color-accent-purple) 0%, var(--color-accent-pink) 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#FFFFFF'
               }}
             >
-              <Calendar size={22} />
+              <CalendarIcon size={22} />
             </div>
             <div>
-              <h2 className="font-heading" style={{ fontSize: '1.4rem' }}>
+              <h2 className="font-heading" style={{ fontSize: '1.35rem', color: 'var(--color-text-primary)' }}>
                 Add Schedule Event
               </h2>
               <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
-                Schedule production shoots, fittings, posts, or meetings
+                Record production shoots, content posts, meetings, or deadlines
               </p>
             </div>
           </div>
@@ -134,9 +129,9 @@ export default function AddScheduleModal({
             style={{
               padding: '12px 16px',
               borderRadius: 'var(--radius-md)',
-              background: 'rgba(244, 63, 94, 0.15)',
-              border: '1px solid rgba(244, 63, 94, 0.3)',
-              color: '#FECDD3',
+              background: '#FFE4E6',
+              border: '1px solid #FECDD3',
+              color: '#BE123C',
               fontSize: '0.88rem',
               marginBottom: '20px'
             }}
@@ -145,18 +140,18 @@ export default function AddScheduleModal({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Title */}
           <div>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
-              Event Title / Activity Name *
+              Event Title / Description *
             </label>
             <input
               type="text"
               name="title"
               value={formData.title}
               onChange={handleChange}
-              placeholder="e.g. Aetheria - Paris Runway Outdoor Shoot"
+              placeholder="e.g. Acme Apparel Fall Campaign Shoot"
               required
               className="glass-input"
             />
@@ -166,14 +161,14 @@ export default function AddScheduleModal({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
-                Event Type Category *
+                Event Category / Type
               </label>
               <select
                 name="event_type"
                 value={formData.event_type}
                 onChange={handleChange}
                 className="glass-input"
-                style={{ background: 'rgba(15, 23, 42, 0.9)' }}
+                style={{ background: '#FFFFFF', color: '#0F172A' }}
               >
                 <option value="shooting">🟣 Shooting / Production Session</option>
                 <option value="content_post">🔵 Content Post / Social Publish</option>
@@ -194,9 +189,7 @@ export default function AddScheduleModal({
                 onChange={handleChange}
                 required
                 className="glass-input"
-                style={{ colorScheme: 'dark' }}
-              >
-              </input>
+              />
             </div>
           </div>
 
@@ -211,7 +204,7 @@ export default function AddScheduleModal({
                 value={formData.project_id}
                 onChange={handleProjectSelect}
                 className="glass-input"
-                style={{ background: 'rgba(15, 23, 42, 0.9)' }}
+                style={{ background: '#FFFFFF', color: '#0F172A' }}
               >
                 <option value="">-- No Project Linked --</option>
                 {projects.map((p) => (
@@ -231,7 +224,7 @@ export default function AddScheduleModal({
                 value={formData.talent_id}
                 onChange={handleChange}
                 className="glass-input"
-                style={{ background: 'rgba(15, 23, 42, 0.9)' }}
+                style={{ background: '#FFFFFF', color: '#0F172A' }}
               >
                 <option value="">-- No Talent Assigned --</option>
                 {talents.map((t) => (
@@ -267,7 +260,7 @@ export default function AddScheduleModal({
               gap: '12px',
               marginTop: '8px',
               paddingTop: '16px',
-              borderTop: '1px solid var(--color-border-subtle)'
+              borderTop: '1px solid var(--color-border-medium)'
             }}
           >
             <button

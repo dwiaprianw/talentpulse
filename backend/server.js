@@ -12,6 +12,59 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(express.json());
 
+// Demo Users & Credentials
+const DEMO_USERS = [
+  {
+    id: 1,
+    name: 'Super Admin',
+    email: 'admin@talentpulse.id',
+    password: 'admin123',
+    pin: '8888',
+    role: 'admin',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+    token: 'tp-token-admin-8888'
+  },
+  {
+    id: 2,
+    name: 'Account Manager',
+    email: 'manager@talentpulse.id',
+    password: 'manager123',
+    pin: '5555',
+    role: 'manager',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80',
+    token: 'tp-token-manager-5555'
+  }
+];
+
+// Helper to extract role from request header
+function getUserRole(req) {
+  const roleHeader = req.headers['x-user-role'];
+  if (roleHeader) return roleHeader.toLowerCase();
+
+  const authHeader = req.headers['authorization'];
+  if (authHeader) {
+    if (authHeader.includes('admin') || authHeader.includes('8888')) return 'admin';
+    if (authHeader.includes('manager') || authHeader.includes('5555')) return 'manager';
+  }
+  return 'guest';
+}
+
+// Middleware to require specific roles
+function requireRole(allowedRoles = []) {
+  return (req, res, next) => {
+    const role = getUserRole(req);
+    if (!allowedRoles.includes(role)) {
+      return res.status(403).json({
+        error: 'Access Denied: Insufficient permissions for this action',
+        requiredRoles: allowedRoles,
+        currentRole: role
+      });
+    }
+    req.userRole = role;
+    next();
+  };
+}
+
 // Helper to safely parse JSON strings or return fallback
 function safeJsonParse(val, fallback = null) {
   if (!val) return fallback;
@@ -45,13 +98,45 @@ function formatTalent(talent) {
 }
 
 // ==========================================
-// 1. HEALTH CHECK
+// 1. HEALTH CHECK & AUTHENTICATION
 // ==========================================
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     message: 'Talent CRM & Marketing Showcase API is running',
     timestamp: new Date().toISOString()
+  });
+});
+
+// POST /api/auth/login - Authenticate user credentials or PIN
+app.post('/api/auth/login', (req, res) => {
+  const { email, password, pin } = req.body;
+
+  let matchedUser = null;
+  if (pin) {
+    matchedUser = DEMO_USERS.find((u) => u.pin === String(pin).trim());
+  } else if (email) {
+    matchedUser = DEMO_USERS.find(
+      (u) => u.email.toLowerCase() === String(email).toLowerCase().trim() && u.password === String(password).trim()
+    );
+  }
+
+  if (!matchedUser) {
+    return res.status(401).json({
+      error: 'Kredensial atau PIN tidak valid. Gunakan PIN 8888 (Admin) atau 5555 (Manager).'
+    });
+  }
+
+  res.json({
+    success: true,
+    user: {
+      id: matchedUser.id,
+      name: matchedUser.name,
+      email: matchedUser.email,
+      role: matchedUser.role,
+      avatar: matchedUser.avatar
+    },
+    token: matchedUser.token
   });
 });
 
@@ -129,8 +214,8 @@ app.get('/api/talents/:id', async (req, res) => {
   }
 });
 
-// POST /api/talents - Create new talent
-app.post('/api/talents', async (req, res) => {
+// POST /api/talents - Create new talent (Protected: Require admin or manager)
+app.post('/api/talents', requireRole(['admin', 'manager']), async (req, res) => {
   try {
     const {
       name,
@@ -175,7 +260,7 @@ app.post('/api/talents', async (req, res) => {
         nicheTagsStr,
         followers || '0',
         engagement_rate || '0%',
-        internal_fee || '$0',
+        internal_fee || 'Rp 0',
         rateCardStr,
         talentStatus
       ]
@@ -189,8 +274,8 @@ app.post('/api/talents', async (req, res) => {
   }
 });
 
-// PUT /api/talents/:id - Update talent details
-app.put('/api/talents/:id', async (req, res) => {
+// PUT /api/talents/:id - Update talent details (Protected: Require admin or manager)
+app.put('/api/talents/:id', requireRole(['admin', 'manager']), async (req, res) => {
   try {
     const { id } = req.params;
     const existing = await dbQuery.get('SELECT * FROM talents WHERE id = ?', [id]);
@@ -263,8 +348,8 @@ app.put('/api/talents/:id', async (req, res) => {
   }
 });
 
-// PATCH /api/talents/:id/status - Update talent status
-app.patch('/api/talents/:id/status', async (req, res) => {
+// PATCH /api/talents/:id/status - Update talent status (Protected: Require admin or manager)
+app.patch('/api/talents/:id/status', requireRole(['admin', 'manager']), async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -287,8 +372,8 @@ app.patch('/api/talents/:id/status', async (req, res) => {
   }
 });
 
-// DELETE /api/talents/:id - Delete talent
-app.delete('/api/talents/:id', async (req, res) => {
+// DELETE /api/talents/:id - Delete talent (Protected: Require admin)
+app.delete('/api/talents/:id', requireRole(['admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const existing = await dbQuery.get('SELECT * FROM talents WHERE id = ?', [id]);
@@ -358,7 +443,7 @@ app.get('/api/projects/:id', async (req, res) => {
   }
 });
 
-// POST /api/projects - Create a new project / client booking lead
+// POST /api/projects - Create a new project / client booking lead (Open to guests for landing page brief submission)
 app.post('/api/projects', async (req, res) => {
   try {
     const {
@@ -425,8 +510,8 @@ app.post('/api/projects', async (req, res) => {
   }
 });
 
-// PUT /api/projects/:id - Update full project
-app.put('/api/projects/:id', async (req, res) => {
+// PUT /api/projects/:id - Update full project (Protected: Require admin or manager)
+app.put('/api/projects/:id', requireRole(['admin', 'manager']), async (req, res) => {
   try {
     const { id } = req.params;
     const existing = await dbQuery.get('SELECT * FROM projects WHERE id = ?', [id]);
@@ -500,8 +585,8 @@ app.put('/api/projects/:id', async (req, res) => {
   }
 });
 
-// PATCH /api/projects/:id/stage - Update project Kanban stage
-app.patch('/api/projects/:id/stage', async (req, res) => {
+// PATCH /api/projects/:id/stage - Update project Kanban stage (Protected: Require admin or manager)
+app.patch('/api/projects/:id/stage', requireRole(['admin', 'manager']), async (req, res) => {
   try {
     const { id } = req.params;
     const status_stage = req.body.status_stage || req.body.stage;
@@ -539,8 +624,8 @@ app.patch('/api/projects/:id/stage', async (req, res) => {
   }
 });
 
-// DELETE /api/projects/:id - Delete project
-app.delete('/api/projects/:id', async (req, res) => {
+// DELETE /api/projects/:id - Delete project (Protected: Require admin)
+app.delete('/api/projects/:id', requireRole(['admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const existing = await dbQuery.get('SELECT * FROM projects WHERE id = ?', [id]);
@@ -583,8 +668,8 @@ app.get('/api/schedules', async (req, res) => {
   }
 });
 
-// POST /api/schedules - Create new schedule event
-app.post('/api/schedules', async (req, res) => {
+// POST /api/schedules - Create new schedule event (Protected: Require admin or manager)
+app.post('/api/schedules', requireRole(['admin', 'manager']), async (req, res) => {
   try {
     const { project_id, talent_id, title, event_type, event_date, notes } = req.body;
 
@@ -629,8 +714,8 @@ app.post('/api/schedules', async (req, res) => {
   }
 });
 
-// DELETE /api/schedules/:id - Delete schedule event
-app.delete('/api/schedules/:id', async (req, res) => {
+// DELETE /api/schedules/:id - Delete schedule event (Protected: Require admin or manager)
+app.delete('/api/schedules/:id', requireRole(['admin', 'manager']), async (req, res) => {
   try {
     const { id } = req.params;
     const existing = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [id]);

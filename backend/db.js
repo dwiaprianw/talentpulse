@@ -6,13 +6,21 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure backend/database directory exists
-const dbDir = path.join(__dirname, 'database');
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
-}
+let dbPath;
 
-const dbPath = path.join(dbDir, 'crm_talent.db');
+if (process.env.VERCEL) {
+  dbPath = '/tmp/crm_talent.db';
+} else {
+  const dbDir = path.join(__dirname, 'database');
+  try {
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+    dbPath = path.join(dbDir, 'crm_talent.db');
+  } catch {
+    dbPath = '/tmp/crm_talent.db';
+  }
+}
 
 export const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {

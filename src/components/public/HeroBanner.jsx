@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, ArrowRight, Star, ShieldCheck, Flame, Zap, Award, Search } from 'lucide-react';
+import { Sparkles, ArrowRight, Star, Flame, Zap, Award, Search } from 'lucide-react';
 
 export default function HeroBanner({
   onExploreRoster = () => {},
@@ -11,25 +11,29 @@ export default function HeroBanner({
       label: 'Vetted Top Talents',
       value: stats?.totalTalents ? `${stats.totalTalents}+` : '50+',
       sub: 'Global creators & models',
-      icon: <Flame size={18} color="#EC4899" />
+      icon: <Flame size={20} color="#EC4899" />,
+      glowBg: '#FCE7F3'
     },
     {
       label: 'Campaigns Delivered',
       value: '250+',
       sub: 'Across luxury, tech & fashion',
-      icon: <Award size={18} color="#8B5CF6" />
+      icon: <Award size={20} color="#8B5CF6" />,
+      glowBg: '#F3E8FF'
     },
     {
       label: 'Verified Retention',
       value: '98.6%',
       sub: 'Repeat brand satisfaction',
-      icon: <Star size={18} color="#F59E0B" />
+      icon: <Star size={20} color="#D97706" />,
+      glowBg: '#FEF3C7'
     },
     {
       label: 'Fast Production Booking',
       value: '24-48h',
       sub: 'Guaranteed talent clearance',
-      icon: <Zap size={18} color="#10B981" />
+      icon: <Zap size={20} color="#059669" />,
+      glowBg: '#D1FAE5'
     }
   ];
 
@@ -51,16 +55,16 @@ export default function HeroBanner({
               alignItems: 'center',
               gap: '8px',
               padding: '6px 18px',
-              background: 'rgba(139, 92, 246, 0.12)',
-              border: '1px solid rgba(139, 92, 246, 0.3)',
+              background: '#F3E8FF',
+              border: '1px solid #E9D5FF',
               borderRadius: 'var(--radius-full)',
-              color: 'var(--color-accent-purple-light)',
+              color: '#6D28D9',
               fontSize: '0.875rem',
-              fontWeight: 600,
-              boxShadow: 'var(--shadow-glow-purple)'
+              fontWeight: 700,
+              boxShadow: 'var(--shadow-sm)'
             }}
           >
-            <Sparkles size={16} className="animate-pulse-glow" />
+            <Sparkles size={16} className="animate-pulse-glow" color="#8B5CF6" />
             <span>Curated Creative Talent Management & Production Roster</span>
           </div>
         </div>
@@ -73,6 +77,7 @@ export default function HeroBanner({
               fontSize: 'clamp(2.5rem, 5vw, 3.75rem)',
               lineHeight: 1.12,
               fontWeight: 800,
+              color: 'var(--color-text-primary)',
               marginBottom: '20px'
             }}
           >
@@ -139,21 +144,21 @@ export default function HeroBanner({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '16px',
-                background: 'rgba(30, 41, 59, 0.65)',
-                border: '1px solid var(--color-border-subtle)'
+                background: '#FFFFFF',
+                border: '1px solid var(--color-border-medium)',
+                boxShadow: 'var(--shadow-md)'
               }}
             >
               <div
                 style={{
-                  width: '44px',
-                  height: '44px',
+                  width: '46px',
+                  height: '46px',
                   borderRadius: 'var(--radius-md)',
-                  background: 'rgba(255, 255, 255, 0.05)',
+                  background: item.glowBg,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  flexShrink: 0,
-                  border: '1px solid var(--color-border-subtle)'
+                  flexShrink: 0
                 }}
               >
                 {item.icon}
@@ -173,7 +178,7 @@ export default function HeroBanner({
                 <div
                   style={{
                     fontSize: '0.85rem',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     color: 'var(--color-text-primary)',
                     marginTop: '2px'
                   }}
@@ -182,9 +187,10 @@ export default function HeroBanner({
                 </div>
                 <div
                   style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--color-text-muted)',
-                    marginTop: '1px'
+                    fontSize: '0.76rem',
+                    color: 'var(--color-text-secondary)',
+                    marginTop: '2px',
+                    fontWeight: 500
                   }}
                 >
                   {item.sub}

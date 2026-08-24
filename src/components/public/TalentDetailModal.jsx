@@ -1,108 +1,66 @@
 import React, { useEffect } from 'react';
-import {
-  X,
-  Sparkles,
-  Users,
-  TrendingUp,
-  CheckCircle2,
-  Calendar,
-  Layers,
-  ArrowRight,
-  Shield,
-  Clock,
-  Ban,
-  Camera,
-  Star,
-  Check
-} from 'lucide-react';
+import { X, Sparkles, Check, ArrowRight, Shield, CheckCircle2, Clock, Users, TrendingUp } from 'lucide-react';
 
 export default function TalentDetailModal({
-  talent,
   isOpen = false,
   onClose = () => {},
+  talent = null,
   onBookTalent = () => {}
 }) {
-  // Handle ESC key close
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
+      if (e.key === 'Escape' && isOpen) onClose();
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  // Prevent background scroll when modal open
-  useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
+      window.addEventListener('keydown', handleKeyDown);
     }
     return () => {
       document.body.style.overflow = 'unset';
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !talent) return null;
 
-  // Safe niche tags parser
+  // Safe parsing of niche tags
   const nicheTags = Array.isArray(talent.niche_tags)
     ? talent.niche_tags
     : typeof talent.niche_tags === 'string'
-    ? talent.niche_tags.replace(/[[\]"]/g, '').split(',').map((s) => s.trim()).filter(Boolean)
+    ? JSON.parse(talent.niche_tags || '[]')
     : [];
 
-  // Curated portfolio gallery based on talent category
-  const portfolioGallery = [
-    talent.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
-    talent.category === 'Model'
-      ? 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80'
-      : talent.category === 'Influencer'
-      ? 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=800&q=80'
-      : talent.category === 'Photographer'
-      ? 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&w=800&q=80'
-      : talent.category === 'Videographer'
-      ? 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=800&q=80'
-      : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=800&q=80'
-  ];
-
-  // Base rate string
-  const baseRateStr = typeof talent.rate_card === 'string' ? talent.rate_card : '$3,500 / day';
-
-  // Tier Packages
+  // Default Rate Card Tiers if string or missing
   const rateTiers = [
     {
-      name: 'Essential Post / Half-Day',
-      price: baseRateStr.includes('$') ? baseRateStr.split('/')[0].trim() : '$2,500',
-      period: 'per deliverable',
-      description: 'Ideal for targeted social promotions, editorial single look, or focused studio shoot.',
-      features: [
-        '1x High-impact hero asset or 4hr session',
-        'Standard digital usage license (3 months)',
-        'Direct creative coordination with agent',
-        'High-resolution raw & color-graded delivery'
-      ],
+      name: 'Single Post & Story Package',
+      price: 'Rp 15.000.000',
+      period: 'per kampanye',
+      description: '1 Dedicated Feed/Reel Post + 2 High-Engagement Instagram Stories dengan link sticker.',
+      features: ['High-Res Content Delivery', 'Brand Tagging & Hashtag Specs', '30-Day Digital Usage Rights'],
       popular: false
     },
     {
-      name: 'Full Campaign & Commercial',
-      price: baseRateStr.includes('$')
-        ? `$${parseInt(baseRateStr.replace(/[^0-9]/g, '') || '3500', 10) * 2}`
-        : '$5,800',
-      period: 'full package',
-      description: 'Comprehensive brand storytelling, multi-channel rights, and premier placement.',
-      features: [
-        '3x Reel/TikTok deliverables or full-day shoot',
-        'Extended global digital & print buyout (1 year)',
-        'Full moodboard & pre-production alignment',
-        'Priority 48-hour post-production turnaround'
-      ],
+      name: 'Full Campaign & Production',
+      price: 'Rp 35.000.000',
+      period: 'full day shoot',
+      description: 'Full-day photoshoot atau produksi video + 3 deliverable sosial + periode eksklusivitas.',
+      features: ['Full Day On-Set Production', 'Multiple Outfit & Style Changes', '90-Day Digital & Paid Ad Rights', 'Raw Footages Included'],
       popular: true
     }
+  ];
+
+  // Base Rate Display
+  const baseRateStr = typeof talent.rate_card === 'string' 
+    ? talent.rate_card 
+    : 'Rp 35.000.000 / proyek';
+
+  // Gallery Placeholders
+  const portfolioGallery = [
+    talent.avatar_url,
+    'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1492633423870-43d1cd2775eb?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=80'
   ];
 
   return (
@@ -111,71 +69,69 @@ export default function TalentDetailModal({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="talent-detail-title"
     >
       <div
         className="glass-panel animate-scale-in"
         style={{
           width: '100%',
-          maxWidth: '860px',
+          maxWidth: '840px',
           maxHeight: '90vh',
           overflowY: 'auto',
-          position: 'relative',
           padding: '32px',
-          background: 'rgba(15, 23, 42, 0.95)',
-          border: '1px solid rgba(139, 92, 246, 0.3)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), var(--shadow-glow-purple)'
+          background: '#FFFFFF',
+          border: '1px solid var(--color-border-medium)',
+          boxShadow: 'var(--shadow-xl)'
         }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="talent-detail-title"
       >
-        {/* Close Button */}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close modal"
+        {/* Modal Header */}
+        <div
           style={{
-            position: 'absolute',
-            top: '20px',
-            right: '20px',
-            width: '36px',
-            height: '36px',
-            borderRadius: 'var(--radius-full)',
-            background: 'rgba(255, 255, 255, 0.08)',
-            border: '1px solid var(--color-border-subtle)',
-            color: 'var(--color-text-secondary)',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'all var(--transition-fast)',
-            zIndex: 10
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = '#FFFFFF';
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--color-text-secondary)';
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            marginBottom: '24px'
           }}
         >
-          <X size={18} />
-        </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span
+              className="badge badge-tag"
+              style={{
+                fontSize: '0.78rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                padding: '4px 12px'
+              }}
+            >
+              ✨ Talent Dossier & Profile
+            </span>
+          </div>
 
-        {/* Talent Profile Header */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-icon"
+            style={{ borderRadius: 'var(--radius-full)' }}
+            aria-label="Close modal"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Talent Hero Overview Section */}
         <div
           style={{
             display: 'flex',
             flexWrap: 'wrap',
             gap: '24px',
-            alignItems: 'flex-start',
-            marginBottom: '28px',
-            borderBottom: '1px solid var(--color-border-subtle)',
-            paddingBottom: '24px'
+            alignItems: 'center',
+            marginBottom: '28px'
           }}
         >
-          {/* Avatar Thumbnail */}
+          {/* Avatar Image */}
           <div
             style={{
               width: '120px',
@@ -183,9 +139,8 @@ export default function TalentDetailModal({
               borderRadius: 'var(--radius-lg)',
               overflow: 'hidden',
               flexShrink: 0,
-              border: '2px solid var(--color-accent-purple)',
-              boxShadow: 'var(--shadow-glow-purple)',
-              backgroundColor: '#1e293b'
+              border: '2px solid var(--color-border-medium)',
+              boxShadow: 'var(--shadow-md)'
             }}
           >
             <img
@@ -217,9 +172,9 @@ export default function TalentDetailModal({
                   fontSize: '0.75rem',
                   fontWeight: 700,
                   textTransform: 'uppercase',
-                  background: 'rgba(139, 92, 246, 0.15)',
-                  color: 'var(--color-accent-purple-light)',
-                  border: '1px solid rgba(139, 92, 246, 0.3)'
+                  background: '#F3E8FF',
+                  color: '#6B21A8',
+                  border: '1px solid #E9D5FF'
                 }}
               >
                 {talent.category}
@@ -254,8 +209,8 @@ export default function TalentDetailModal({
             marginBottom: '28px'
           }}
         >
-          <div className="glass-card" style={{ padding: '14px 18px', background: 'rgba(30, 41, 59, 0.5)' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+          <div className="glass-card" style={{ padding: '14px 18px', background: '#F8FAFC' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
               Audience / Reach
             </div>
             <div
@@ -272,15 +227,15 @@ export default function TalentDetailModal({
             </div>
           </div>
 
-          <div className="glass-card" style={{ padding: '14px 18px', background: 'rgba(30, 41, 59, 0.5)' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+          <div className="glass-card" style={{ padding: '14px 18px', background: '#F8FAFC' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
               Avg Engagement
             </div>
             <div
               style={{
                 fontSize: '1.35rem',
                 fontWeight: 800,
-                color: 'var(--color-accent-emerald-light)',
+                color: '#059669',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px'
@@ -290,15 +245,15 @@ export default function TalentDetailModal({
             </div>
           </div>
 
-          <div className="glass-card" style={{ padding: '14px 18px', background: 'rgba(30, 41, 59, 0.5)' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+          <div className="glass-card" style={{ padding: '14px 18px', background: '#F8FAFC' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
               Starting Rate
             </div>
             <div
               style={{
                 fontSize: '1.35rem',
                 fontWeight: 800,
-                color: 'var(--color-accent-amber-light)',
+                color: '#D97706',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis'
@@ -308,15 +263,15 @@ export default function TalentDetailModal({
             </div>
           </div>
 
-          <div className="glass-card" style={{ padding: '14px 18px', background: 'rgba(30, 41, 59, 0.5)' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+          <div className="glass-card" style={{ padding: '14px 18px', background: '#F8FAFC' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
               Agency Status
             </div>
             <div
               style={{
                 fontSize: '1.15rem',
                 fontWeight: 700,
-                color: '#34D399',
+                color: '#059669',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px'
@@ -343,7 +298,7 @@ export default function TalentDetailModal({
             <h3 style={{ fontSize: '1.15rem', color: 'var(--color-text-primary)' }}>
               Featured Work & Portfolio
             </h3>
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
               High-Res Campaign Visuals
             </span>
           </div>
@@ -363,8 +318,8 @@ export default function TalentDetailModal({
                   overflow: 'hidden',
                   position: 'relative',
                   paddingTop: '100%',
-                  background: '#1e293b',
-                  border: '1px solid var(--color-border-subtle)'
+                  background: '#F1F5F9',
+                  border: '1px solid var(--color-border-medium)'
                 }}
               >
                 <img
@@ -408,8 +363,8 @@ export default function TalentDetailModal({
                 style={{
                   padding: '20px',
                   position: 'relative',
-                  border: tier.popular ? '1px solid rgba(236, 72, 153, 0.5)' : '1px solid var(--color-border-subtle)',
-                  background: tier.popular ? 'rgba(236, 72, 153, 0.06)' : 'rgba(30, 41, 59, 0.5)'
+                  border: tier.popular ? '2px solid #EC4899' : '1px solid var(--color-border-medium)',
+                  background: tier.popular ? '#FDF2F8' : '#F8FAFC'
                 }}
               >
                 {tier.popular && (
@@ -438,7 +393,7 @@ export default function TalentDetailModal({
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '8px' }}>
                   <span
                     className="font-heading"
-                    style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-accent-pink)' }}
+                    style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-accent-pink-light)' }}
                   >
                     {tier.price}
                   </span>
@@ -451,7 +406,7 @@ export default function TalentDetailModal({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {tier.features.map((feat, fIdx) => (
                     <div key={fIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: 'var(--color-text-primary)' }}>
-                      <Check size={14} color="#34D399" />
+                      <Check size={14} color="#059669" />
                       <span>{feat}</span>
                     </div>
                   ))}
@@ -468,7 +423,7 @@ export default function TalentDetailModal({
             alignItems: 'center',
             justifyContent: 'flex-end',
             gap: '14px',
-            borderTop: '1px solid var(--color-border-subtle)',
+            borderTop: '1px solid var(--color-border-medium)',
             paddingTop: '20px'
           }}
         >

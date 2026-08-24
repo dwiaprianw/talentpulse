@@ -1,70 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   Plus,
-  Filter,
-  Users,
-  Camera,
-  Send,
-  Clock,
   Trash2,
   X,
-  Sparkles,
-  DollarSign,
-  AlertCircle,
-  MapPin,
-  User,
-  CheckCircle2,
+  Users,
+  Clock,
   Briefcase
 } from 'lucide-react';
 import { deleteSchedule } from '../../services/api';
 import AddScheduleModal from './AddScheduleModal';
-
-// Event Type Metadata & Badge Config
-const EVENT_TYPES = {
-  shooting: {
-    label: 'Shooting / Production',
-    badgeClass: 'event-badge-shooting',
-    emoji: '🟣',
-    color: '#DDD6FE',
-    bg: 'rgba(139, 92, 246, 0.25)',
-    border: 'rgba(139, 92, 246, 0.5)'
-  },
-  content_post: {
-    label: 'Content Post / Publish',
-    badgeClass: 'event-badge-posting',
-    emoji: '🔵',
-    color: '#BFDBFE',
-    bg: 'rgba(59, 130, 246, 0.25)',
-    border: 'rgba(59, 130, 246, 0.5)'
-  },
-  fitting: {
-    label: 'Fitting / Wardrobe',
-    badgeClass: 'event-badge-fitting',
-    emoji: '🟠',
-    color: '#FDE68A',
-    bg: 'rgba(245, 158, 11, 0.25)',
-    border: 'rgba(245, 158, 11, 0.5)'
-  },
-  meeting: {
-    label: 'Meeting / Alignment',
-    badgeClass: 'event-badge-fitting',
-    emoji: '🟠',
-    color: '#FDE68A',
-    bg: 'rgba(245, 158, 11, 0.25)',
-    border: 'rgba(245, 158, 11, 0.5)'
-  },
-  payment: {
-    label: 'Payment / Invoice',
-    badgeClass: 'event-badge-payment',
-    emoji: '🔴',
-    color: '#FECDD3',
-    bg: 'rgba(244, 63, 94, 0.25)',
-    border: 'rgba(244, 63, 94, 0.5)'
-  }
-};
 
 export default function MasterCalendar({
   schedules = [],
@@ -74,12 +21,7 @@ export default function MasterCalendar({
   onScheduleDeleted = () => {},
   addToast = () => {}
 }) {
-  // Calendar View Month State (default to current date)
-  const [currentDate, setCurrentDate] = useState(() => {
-    // Check if we have schedules, default to August 2026 if seeded data is in 2026, or current real date
-    return new Date(2026, 7, 1); // August 2026 (Month is 0-indexed: 7 = August)
-  });
-
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTalentFilter, setSelectedTalentFilter] = useState('All');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('All');
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -87,244 +29,252 @@ export default function MasterCalendar({
   const [activeEventDetail, setActiveEventDetail] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
-  // Month navigation helpers
-  const handlePrevMonth = () => {
-    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  // Month navigation
+  const prevMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   };
 
-  const handleNextMonth = () => {
-    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  const nextMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
-  const handleJumpToToday = () => {
-    setCurrentDate(new Date(2026, 7, 24)); // August 24, 2026 current baseline
+  const todayMonth = () => {
+    setCurrentDate(new Date());
   };
 
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth();
+  // Month metadata
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const monthName = currentDate.toLocaleString('en-US', { month: 'long' });
 
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
+  // First day of current month (0 = Sun, 1 = Mon...)
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  // Total days in current month
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  // Total days in previous month
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
 
-  // Helper to format Date to YYYY-MM-DD
-  const formatDateKey = (year, month, day) => {
-    const mm = String(month + 1).padStart(2, '0');
-    const dd = String(day).padStart(2, '0');
-    return `${year}-${mm}-${dd}`;
-  };
+  // Generate calendar days grid (42 cells matrix)
+  const calendarDays = [];
 
-  // Filter schedules based on talent & event type
-  const filteredSchedules = useMemo(() => {
-    return schedules.filter((s) => {
-      // Talent filter
-      if (selectedTalentFilter !== 'All') {
-        if (String(s.talent_id) !== String(selectedTalentFilter)) {
-          return false;
-        }
-      }
+  // Previous month trailing days
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    const dayNum = daysInPrevMonth - i;
+    const prevDate = new Date(year, month - 1, dayNum);
+    const dateKey = prevDate.toISOString().split('T')[0];
+    calendarDays.push({ dayNum, isCurrentMonth: false, dateKey });
+  }
 
-      // Event Type filter
-      if (selectedTypeFilter !== 'All') {
-        const type = (s.event_type || '').toLowerCase();
-        if (selectedTypeFilter === 'shooting' && !type.includes('shoot')) return false;
-        if (selectedTypeFilter === 'content_post' && !type.includes('post') && !type.includes('publish')) return false;
-        if (selectedTypeFilter === 'fitting' && !type.includes('fit') && !type.includes('meet')) return false;
-        if (selectedTypeFilter === 'payment' && !type.includes('pay') && !type.includes('invoice')) return false;
-      }
+  // Current month days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const mStr = String(month + 1).padStart(2, '0');
+    const dStr = String(d).padStart(2, '0');
+    const dateKey = `${year}-${mStr}-${dStr}`;
+    calendarDays.push({ dayNum: d, isCurrentMonth: true, dateKey });
+  }
 
-      return true;
-    });
-  }, [schedules, selectedTalentFilter, selectedTypeFilter]);
+  // Next month leading days to complete matrix
+  const remainingCells = 42 - calendarDays.length;
+  for (let j = 1; j <= remainingCells; j++) {
+    const nextDate = new Date(year, month + 1, j);
+    const dateKey = nextDate.toISOString().split('T')[0];
+    calendarDays.push({ dayNum: j, isCurrentMonth: false, dateKey });
+  }
 
-  // Build Calendar Matrix
-  const calendarDays = useMemo(() => {
-    const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Sun, 1 = Mon ...
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+  // Filter schedules
+  const filteredSchedules = schedules.filter((item) => {
+    const matchesTalent =
+      selectedTalentFilter === 'All' || String(item.talent_id) === String(selectedTalentFilter);
 
-    const days = [];
+    const typeStr = (item.event_type || '').toLowerCase();
+    const matchesType =
+      selectedTypeFilter === 'All' ||
+      (selectedTypeFilter === 'shooting' && typeStr.includes('shoot')) ||
+      (selectedTypeFilter === 'content_post' && (typeStr.includes('post') || typeStr.includes('publish'))) ||
+      (selectedTypeFilter === 'fitting' && (typeStr.includes('fitting') || typeStr.includes('meeting'))) ||
+      (selectedTypeFilter === 'payment' && (typeStr.includes('payment') || typeStr.includes('invoice')));
 
-    // Preceding padding days from previous month
-    for (let i = firstDayIndex - 1; i >= 0; i--) {
-      const dayNum = daysInPrevMonth - i;
-      const prevMonthIdx = currentMonth === 0 ? 11 : currentMonth - 1;
-      const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-      const dateKey = formatDateKey(prevYear, prevMonthIdx, dayNum);
-      days.push({
-        dayNum,
-        dateKey,
-        isCurrentMonth: false
-      });
-    }
+    return matchesTalent && matchesType;
+  });
 
-    // Days in current month
-    for (let i = 1; i <= daysInMonth; i++) {
-      const dateKey = formatDateKey(currentYear, currentMonth, i);
-      days.push({
-        dayNum: i,
-        dateKey,
-        isCurrentMonth: true
-      });
-    }
+  // Group schedules by YYYY-MM-DD date key
+  const schedulesByDate = {};
+  filteredSchedules.forEach((item) => {
+    const key = item.event_date;
+    if (!schedulesByDate[key]) schedulesByDate[key] = [];
+    schedulesByDate[key].push(item);
+  });
 
-    // Trailing padding days to fill 35 or 42 grid cells (complete weeks)
-    const totalCells = Math.ceil(days.length / 7) * 7;
-    const remaining = totalCells - days.length;
-    for (let i = 1; i <= remaining; i++) {
-      const nextMonthIdx = currentMonth === 11 ? 0 : currentMonth + 1;
-      const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
-      const dateKey = formatDateKey(nextYear, nextMonthIdx, i);
-      days.push({
-        dayNum: i,
-        dateKey,
-        isCurrentMonth: false
-      });
-    }
-
-    return days;
-  }, [currentYear, currentMonth]);
-
-  // Group filtered schedules by date key
-  const schedulesByDate = useMemo(() => {
-    const map = {};
-    filteredSchedules.forEach((item) => {
-      const dateKey = item.event_date ? item.event_date.split('T')[0] : '';
-      if (dateKey) {
-        if (!map[dateKey]) map[dateKey] = [];
-        map[dateKey].push(item);
-      }
-    });
-    return map;
-  }, [filteredSchedules]);
-
-  // Handle Event deletion
-  const handleDeleteSchedule = async (scheduleId, e) => {
-    if (e) e.stopPropagation();
-    if (!window.confirm('Are you sure you want to remove this schedule event?')) return;
-
-    try {
-      setDeletingId(scheduleId);
-      await deleteSchedule(scheduleId);
-      onScheduleDeleted(scheduleId);
-      setActiveEventDetail(null);
-      addToast({
-        type: 'success',
-        title: 'Schedule Removed',
-        message: 'Event was successfully removed from the calendar.'
-      });
-    } catch (err) {
-      console.error('Failed to delete schedule:', err);
-      addToast({
-        type: 'error',
-        title: 'Delete Failed',
-        message: err.message || 'Could not remove schedule event'
-      });
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  // Helper to determine event badge styling
-  const getEventBadgeMeta = (eventType) => {
-    const type = (eventType || '').toLowerCase();
-    if (type.includes('shoot')) return EVENT_TYPES.shooting;
-    if (type.includes('post') || type.includes('publish')) return EVENT_TYPES.content_post;
-    if (type.includes('fit') || type.includes('wardrobe')) return EVENT_TYPES.fitting;
-    if (type.includes('meet')) return EVENT_TYPES.meeting;
-    if (type.includes('pay') || type.includes('invoice')) return EVENT_TYPES.payment;
-    return EVENT_TYPES.shooting;
-  };
+  const todayKey = new Date().toISOString().split('T')[0];
 
   const handleDayClick = (day) => {
     setSelectedDateForNewEvent(day.dateKey);
     setAddModalOpen(true);
   };
 
-  const todayKey = '2026-08-24'; // Sync with system timestamp context
+  const handleDeleteSchedule = async (id, e) => {
+    e.stopPropagation();
+    try {
+      setDeletingId(id);
+      await deleteSchedule(id);
+      onScheduleDeleted(id);
+      setActiveEventDetail(null);
+      addToast({
+        type: 'info',
+        title: 'Event Deleted',
+        message: 'The schedule event was removed from the calendar.'
+      });
+    } catch (err) {
+      console.error('Error deleting schedule:', err);
+      addToast({
+        type: 'error',
+        title: 'Deletion Failed',
+        message: err.message || 'Could not delete schedule event.'
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const getEventBadgeMeta = (eventType = '') => {
+    const t = eventType.toLowerCase();
+    if (t.includes('shoot')) {
+      return {
+        badgeClass: 'event-badge-shooting',
+        label: 'Shooting Session',
+        emoji: '🟣',
+        bg: '#F3E8FF',
+        color: '#6B21A8',
+        border: '#D8B4FE'
+      };
+    }
+    if (t.includes('post') || t.includes('publish')) {
+      return {
+        badgeClass: 'event-badge-posting',
+        label: 'Content Publish',
+        emoji: '🔵',
+        bg: '#DBEAFE',
+        color: '#1E40AF',
+        border: '#93C5FD'
+      };
+    }
+    if (t.includes('fitting') || t.includes('meeting')) {
+      return {
+        badgeClass: 'event-badge-fitting',
+        label: 'Fitting & Alignment',
+        emoji: '🟠',
+        bg: '#FEF3C7',
+        color: '#92400E',
+        border: '#FDE68A'
+      };
+    }
+    return {
+      badgeClass: 'event-badge-payment',
+      label: 'Payment Milestone',
+      emoji: '🔴',
+      bg: '#FFE4E6',
+      color: '#9F1239',
+      border: '#FECDD3'
+    };
+  };
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Top Header & Calendar Controls */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Calendar Control Toolbar */}
       <div
+        className="glass-panel"
         style={{
+          padding: '24px 28px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '16px'
+          gap: '16px',
+          background: '#FFFFFF',
+          boxShadow: 'var(--shadow-md)',
+          border: '1px solid var(--color-border-medium)'
         }}
       >
         <div>
-          <h2 className="font-heading" style={{ fontSize: '1.6rem', marginBottom: '4px' }}>
-            Agency Master Production Calendar
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: '#D97706',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '4px'
+            }}
+          >
+            <CalendarIcon size={15} /> Production Master Calendar
+          </div>
+          <h2 className="font-heading" style={{ fontSize: '1.6rem', color: 'var(--color-text-primary)' }}>
+            Agency <span className="text-gradient-amber-rose">Schedule & Milestones</span>
           </h2>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.88rem' }}>
-            Synchronize shoot call times, social post deliveries, fittings, and talent payment milestones.
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.86rem' }}>
+            Color-coded scheduling for talent shoots, content publishing, fittings, and invoice deadlines.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedDateForNewEvent(formatDateKey(currentYear, currentMonth, new Date().getDate()));
-            setAddModalOpen(true);
-          }}
-          className="btn btn-primary"
-          style={{ gap: '6px' }}
-        >
-          <Plus size={16} /> Add Schedule Event
-        </button>
-      </div>
-
-      {/* Month Navigation & Legend Bar */}
-      <div
-        className="glass-card"
-        style={{
-          padding: '16px 20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px'
-        }}
-      >
-        {/* Month Selector Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Month Navigation Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <button
               type="button"
-              onClick={handlePrevMonth}
+              onClick={prevMonth}
               className="btn-icon"
               title="Previous Month"
-              style={{ padding: '8px' }}
+              style={{ width: '36px', height: '36px' }}
             >
               <ChevronLeft size={18} />
             </button>
 
             <button
               type="button"
-              onClick={handleNextMonth}
+              onClick={todayMonth}
+              className="btn btn-secondary btn-sm"
+              style={{ padding: '6px 14px' }}
+            >
+              Today
+            </button>
+
+            <button
+              type="button"
+              onClick={nextMonth}
               className="btn-icon"
               title="Next Month"
-              style={{ padding: '8px' }}
+              style={{ width: '36px', height: '36px' }}
             >
               <ChevronRight size={18} />
             </button>
           </div>
 
-          <h3 style={{ fontSize: '1.3rem', fontWeight: 800, minWidth: '190px' }}>
-            {monthNames[currentMonth]} {currentYear}
+          <h3
+            className="font-heading"
+            style={{
+              fontSize: '1.25rem',
+              minWidth: '160px',
+              textAlign: 'center',
+              fontWeight: 800,
+              color: 'var(--color-text-primary)'
+            }}
+          >
+            {monthName} {year}
           </h3>
 
           <button
             type="button"
-            onClick={handleJumpToToday}
-            className="btn btn-secondary btn-sm"
-            style={{ fontSize: '0.8rem', padding: '4px 10px' }}
+            onClick={() => {
+              setSelectedDateForNewEvent(todayKey);
+              setAddModalOpen(true);
+            }}
+            className="btn btn-primary"
+            style={{ gap: '6px', height: '38px' }}
           >
-            Today
+            <Plus size={16} /> Add Event
           </button>
         </div>
 
@@ -335,11 +285,11 @@ export default function MasterCalendar({
             value={selectedTalentFilter}
             onChange={(e) => setSelectedTalentFilter(e.target.value)}
             className="glass-input"
-            style={{ width: '180px', fontSize: '0.84rem', background: 'rgba(15, 23, 42, 0.9)' }}
+            style={{ width: '180px', fontSize: '0.84rem', background: '#FFFFFF', color: '#0F172A', height: '38px' }}
           >
-            <option value="All">All Talents</option>
+            <option value="All" style={{ background: '#FFFFFF', color: '#0F172A' }}>All Talents</option>
             {talents.map((t) => (
-              <option key={t.id} value={t.id}>
+              <option key={t.id} value={t.id} style={{ background: '#FFFFFF', color: '#0F172A' }}>
                 {t.name} ({t.category})
               </option>
             ))}
@@ -350,13 +300,13 @@ export default function MasterCalendar({
             value={selectedTypeFilter}
             onChange={(e) => setSelectedTypeFilter(e.target.value)}
             className="glass-input"
-            style={{ width: '170px', fontSize: '0.84rem', background: 'rgba(15, 23, 42, 0.9)' }}
+            style={{ width: '170px', fontSize: '0.84rem', background: '#FFFFFF', color: '#0F172A', height: '38px' }}
           >
-            <option value="All">All Event Types</option>
-            <option value="shooting">🟣 Shooting Sessions</option>
-            <option value="content_post">🔵 Content Posts</option>
-            <option value="fitting">🟠 Fittings / Meetings</option>
-            <option value="payment">🔴 Payment Milestones</option>
+            <option value="All" style={{ background: '#FFFFFF', color: '#0F172A' }}>All Event Types</option>
+            <option value="shooting" style={{ background: '#FFFFFF', color: '#0F172A' }}>🟣 Shooting Sessions</option>
+            <option value="content_post" style={{ background: '#FFFFFF', color: '#0F172A' }}>🔵 Content Posts</option>
+            <option value="fitting" style={{ background: '#FFFFFF', color: '#0F172A' }}>🟠 Fittings / Meetings</option>
+            <option value="payment" style={{ background: '#FFFFFF', color: '#0F172A' }}>🔴 Payment Milestones</option>
           </select>
         </div>
       </div>
@@ -373,17 +323,17 @@ export default function MasterCalendar({
           color: 'var(--color-text-secondary)'
         }}
       >
-        <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>Legend:</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#DDD6FE' }}>
+        <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>Legend:</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#6B21A8', fontWeight: 600 }}>
           🟣 Shooting / Production
         </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#BFDBFE' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#1E40AF', fontWeight: 600 }}>
           🔵 Content Post / Publish
         </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#FDE68A' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#92400E', fontWeight: 600 }}>
           🟠 Fitting / Meeting
         </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#FECDD3' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#9F1239', fontWeight: 600 }}>
           🔴 Payment / Invoice
         </span>
       </div>
@@ -530,8 +480,9 @@ export default function MasterCalendar({
               width: '100%',
               maxWidth: '520px',
               padding: '28px',
-              border: '1px solid rgba(139, 92, 246, 0.3)',
-              boxShadow: 'var(--shadow-glass), var(--shadow-glow-purple)'
+              background: '#FFFFFF',
+              border: '1px solid var(--color-border-medium)',
+              boxShadow: 'var(--shadow-xl)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -553,7 +504,7 @@ export default function MasterCalendar({
                 >
                   {getEventBadgeMeta(activeEventDetail.event_type).label}
                 </span>
-                <h3 className="font-heading" style={{ fontSize: '1.3rem' }}>
+                <h3 className="font-heading" style={{ fontSize: '1.3rem', color: 'var(--color-text-primary)' }}>
                   {activeEventDetail.title}
                 </h3>
               </div>
@@ -571,7 +522,7 @@ export default function MasterCalendar({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '0.88rem', color: 'var(--color-text-secondary)' }}>
               {/* Date */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Clock size={16} color="var(--color-accent-blue-light)" />
+                <Clock size={16} color="#2563EB" />
                 <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
                   Date: {activeEventDetail.event_date}
                 </span>
@@ -590,7 +541,7 @@ export default function MasterCalendar({
               {/* Project */}
               {activeEventDetail.brand_name && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Briefcase size={16} color="var(--color-accent-cyan)" />
+                  <Briefcase size={16} color="#06B6D4" />
                   <span>
                     Brand / Project: <strong style={{ color: 'var(--color-text-primary)' }}>{activeEventDetail.brand_name}</strong> ({activeEventDetail.project_title})
                   </span>
@@ -603,9 +554,9 @@ export default function MasterCalendar({
                   style={{
                     marginTop: '6px',
                     padding: '12px 14px',
-                    background: 'rgba(15, 23, 42, 0.6)',
+                    background: '#F8FAFC',
                     borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--color-border-subtle)',
+                    border: '1px solid var(--color-border-medium)',
                     fontSize: '0.82rem',
                     lineHeight: 1.5
                   }}
@@ -626,7 +577,7 @@ export default function MasterCalendar({
                 alignItems: 'center',
                 marginTop: '24px',
                 paddingTop: '16px',
-                borderTop: '1px solid var(--color-border-subtle)'
+                borderTop: '1px solid var(--color-border-medium)'
               }}
             >
               <button

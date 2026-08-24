@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, TrendingUp, DollarSign, ArrowUpRight, Sparkles, CheckCircle2, Clock, Ban } from 'lucide-react';
+import { Sparkles, Users, TrendingUp, ArrowUpRight, CheckCircle2, Clock } from 'lucide-react';
 
 export default function TalentCard({
   talent,
@@ -8,79 +8,46 @@ export default function TalentCard({
 }) {
   if (!talent) return null;
 
-  // Safe niche tags parser
   const nicheTags = Array.isArray(talent.niche_tags)
     ? talent.niche_tags
     : typeof talent.niche_tags === 'string'
-    ? talent.niche_tags.replace(/[[\]"]/g, '').split(',').map((s) => s.trim()).filter(Boolean)
+    ? JSON.parse(talent.niche_tags || '[]')
     : [];
 
-  // Status badge config
-  const statusConfig = {
-    available: {
-      label: 'Available',
-      icon: <CheckCircle2 size={12} />,
-      className: 'badge-available'
-    },
-    on_shoot: {
-      label: 'On Shoot',
-      icon: <Clock size={12} />,
-      className: 'badge-booked'
-    },
-    booked: {
-      label: 'Booked',
-      icon: <Clock size={12} />,
-      className: 'badge-booked'
-    },
-    unavailable: {
-      label: 'Unavailable',
-      icon: <Ban size={12} />,
-      className: 'badge-unavailable'
-    }
+  const categoryBadgeColors = {
+    Model: { bg: '#F3E8FF', color: '#6B21A8', border: '#E9D5FF' },
+    Influencer: { bg: '#DBEAFE', color: '#1E40AF', border: '#93C5FD' },
+    Photographer: { bg: '#FEF3C7', color: '#92400E', border: '#FDE68A' },
+    Videographer: { bg: '#FCE7F3', color: '#9D174D', border: '#FBCFE8' },
+    Designer: { bg: '#D1FAE5', color: '#065F46', border: '#A7F3D0' }
   };
 
-  const currentStatus = statusConfig[talent.status] || statusConfig.available;
+  const catStyle = categoryBadgeColors[talent.category] || categoryBadgeColors.Model;
 
-  // Category badge colors
-  const categoryThemes = {
-    Model: { bg: 'rgba(236, 72, 153, 0.15)', text: '#F472B6', border: 'rgba(236, 72, 153, 0.3)' },
-    Influencer: { bg: 'rgba(139, 92, 246, 0.15)', text: '#C4B5FD', border: 'rgba(139, 92, 246, 0.3)' },
-    Photographer: { bg: 'rgba(59, 130, 246, 0.15)', text: '#93C5FD', border: 'rgba(59, 130, 246, 0.3)' },
-    Videographer: { bg: 'rgba(245, 158, 11, 0.15)', text: '#FCD34D', border: 'rgba(245, 158, 11, 0.3)' },
-    Designer: { bg: 'rgba(16, 185, 129, 0.15)', text: '#6EE7B7', border: 'rgba(16, 185, 129, 0.3)' }
-  };
-
-  const catStyle = categoryThemes[talent.category] || {
-    bg: 'rgba(148, 163, 184, 0.15)',
-    text: '#CBD5E1',
-    border: 'rgba(148, 163, 184, 0.3)'
-  };
-
-  // Format rate card string
-  const rateDisplay =
-    typeof talent.rate_card === 'string'
-      ? talent.rate_card
-      : talent.rate_card?.starter || talent.rate_card?.rate || '$3,000 / day';
+  const isAvailable = (talent.status || 'available').toLowerCase() === 'available';
+  const rateDisplay = typeof talent.rate_card === 'string' ? talent.rate_card : 'Rp 35.000.000 / hari';
 
   return (
     <div
-      className="glass-card animate-fade-in"
+      className="glass-card glass-card-hover animate-scale-in"
       style={{
         display: 'flex',
         flexDirection: 'column',
+        height: '100%',
         overflow: 'hidden',
-        position: 'relative',
-        transition: 'all var(--transition-normal)'
+        background: '#FFFFFF',
+        border: '1px solid var(--color-border-medium)',
+        boxShadow: 'var(--shadow-md)'
       }}
     >
-      {/* Talent Image Header with Overlays */}
+      {/* Media Header / Avatar Banner */}
       <div
         style={{
           position: 'relative',
+          paddingTop: '90%',
           width: '100%',
-          paddingTop: '92%', // ~1:1 aspect ratio
           overflow: 'hidden',
-          backgroundColor: '#1e293b'
+          backgroundColor: '#F1F5F9'
         }}
       >
         <img
@@ -94,36 +61,36 @@ export default function TalentCard({
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            objectPosition: 'top center',
             transition: 'transform 0.4s ease'
           }}
           onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.06)')}
           onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1.0)')}
         />
 
-        {/* Gradient Scrim for Readability */}
+        {/* Gradient Overlay */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(180deg, rgba(15,23,42,0.1) 0%, rgba(15,23,42,0.4) 60%, rgba(15,23,42,0.92) 100%)',
+            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, transparent 40%, rgba(15, 23, 42, 0.75) 100%)',
             pointerEvents: 'none'
           }}
         />
 
-        {/* Top Badges (Category & Status) */}
+        {/* Top Badges */}
         <div
           style={{
             position: 'absolute',
-            top: '14px',
-            left: '14px',
-            right: '14px',
+            top: '12px',
+            left: '12px',
+            right: '12px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             zIndex: 2
           }}
         >
+          {/* Category Badge */}
           <span
             style={{
               padding: '4px 10px',
@@ -131,57 +98,53 @@ export default function TalentCard({
               fontSize: '0.72rem',
               fontWeight: 700,
               textTransform: 'uppercase',
-              letterSpacing: '0.05em',
+              letterSpacing: '0.04em',
               background: catStyle.bg,
-              color: catStyle.text,
-              border: `1px solid ${catStyle.border}`,
-              backdropFilter: 'blur(8px)'
+              color: catStyle.color,
+              border: `1px solid ${catStyle.border}`
             }}
           >
             {talent.category}
           </span>
 
-          <span
-            className={`badge ${currentStatus.className}`}
-            style={{
-              backdropFilter: 'blur(8px)',
-              fontSize: '0.7rem',
-              fontWeight: 600
-            }}
-          >
-            {currentStatus.icon} {currentStatus.label}
+          {/* Live Availability Status */}
+          <span className={`badge ${isAvailable ? 'badge-available' : 'badge-booked'}`}>
+            {isAvailable ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+            {isAvailable ? 'Available' : 'On Shoot'}
           </span>
         </div>
 
-        {/* Talent Name & Title floating at bottom of image */}
+        {/* Talent Name & Title Overlay */}
         <div
           style={{
             position: 'absolute',
             bottom: '12px',
             left: '16px',
             right: '16px',
-            zIndex: 2
+            zIndex: 2,
+            color: '#FFFFFF'
           }}
         >
           <h3
             className="font-heading"
             style={{
-              fontSize: '1.35rem',
-              fontWeight: 700,
-              color: '#FFFFFF',
+              fontSize: '1.25rem',
+              fontWeight: 800,
               lineHeight: 1.2,
-              marginBottom: '2px'
+              marginBottom: '2px',
+              textShadow: '0 2px 8px rgba(0, 0, 0, 0.6)'
             }}
           >
             {talent.name}
           </h3>
           <p
             style={{
-              fontSize: '0.85rem',
-              color: 'var(--color-text-secondary)',
+              fontSize: '0.82rem',
+              color: 'rgba(255, 255, 255, 0.9)',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
-              textOverflow: 'ellipsis'
+              textOverflow: 'ellipsis',
+              fontWeight: 500
             }}
           >
             {talent.title}
@@ -189,14 +152,14 @@ export default function TalentCard({
         </div>
       </div>
 
-      {/* Card Body */}
+      {/* Card Content & Metrics */}
       <div
         style={{
-          padding: '16px 18px',
+          padding: '16px',
           display: 'flex',
           flexDirection: 'column',
-          flex: 1,
           justifyContent: 'space-between',
+          flex: 1,
           gap: '14px'
         }}
       >
@@ -234,14 +197,14 @@ export default function TalentCard({
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: '8px',
-            background: 'rgba(15, 23, 42, 0.4)',
+            background: '#F8FAFC',
             padding: '10px 12px',
             borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--color-border-subtle)'
+            border: '1px solid var(--color-border-medium)'
           }}
         >
           <div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
               Followers
             </div>
             <div
@@ -259,14 +222,14 @@ export default function TalentCard({
           </div>
 
           <div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
               Engage
             </div>
             <div
               style={{
                 fontSize: '0.95rem',
                 fontWeight: 700,
-                color: 'var(--color-accent-emerald-light)',
+                color: '#059669',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '3px'
@@ -277,14 +240,14 @@ export default function TalentCard({
           </div>
 
           <div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
               From Rate
             </div>
             <div
               style={{
                 fontSize: '0.95rem',
                 fontWeight: 700,
-                color: 'var(--color-accent-amber-light)',
+                color: '#D97706',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis'
