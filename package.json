@@ -5,6 +5,7 @@
   "scripts": {
     "server": "node backend/server.js",
     "seed": "node backend/seed.js",
+    "test:api": "node backend/test-api.js",
     "client": "vite",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "build": "vite build",
