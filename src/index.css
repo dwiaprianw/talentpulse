@@ -965,3 +965,126 @@ img {
   color: #9F1239;
   border-color: #FECDD3;
 }
+
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE MEDIA QUERIES
+   ========================================================================== */
+
+.desktop-nav-links {
+  display: flex;
+}
+
+.desktop-actions {
+  display: flex;
+}
+
+.mobile-menu-toggle {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+
+  /* Navigation Bar Mobile Layout */
+  .desktop-nav-links {
+    display: none !important;
+  }
+
+  .desktop-actions {
+    display: none !important;
+  }
+
+  .mobile-menu-toggle {
+    display: flex !important;
+  }
+
+  /* Modals Fit Mobile Screen */
+  .modal-overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+
+  .glass-panel {
+    border-radius: var(--radius-lg);
+    padding: 20px 16px !important;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* Grid Responsiveness */
+  .grid-responsive {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  /* Kanban Board Touch Scroll */
+  .kanban-board-container {
+    gap: 12px;
+    padding-bottom: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .kanban-column {
+    min-width: 270px;
+    max-width: 290px;
+    height: auto;
+    max-height: 520px;
+    min-height: 480px;
+  }
+
+  /* Calendar Matrix Mobile Scroll */
+  .calendar-matrix {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .calendar-cell {
+    height: 75px;
+    min-width: 60px;
+    padding: 4px;
+    font-size: 0.75rem;
+  }
+
+  .event-badge {
+    font-size: 0.68rem;
+    padding: 2px 4px;
+  }
+
+  /* CRM Sub-Navigation Mobile Scroll */
+  .crm-nav-tabs {
+    padding: 4px;
+    gap: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .crm-tab-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
+  /* Mobile Touch Sizing */
+  .btn {
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra Small Phone Layout */
+  .kpi-card {
+    padding: 16px;
+  }
+
+  .btn-lg {
+    padding: 12px 20px;
+    font-size: 0.95rem;
+    width: 100%;
+  }
+
+  .status-pill-btn {
+    padding: 3px 8px;
+    font-size: 0.7rem;
+  }
+}
