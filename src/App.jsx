@@ -1,29 +1,40 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchTalents, fetchStats } from './services/api';
+import { fetchTalents, fetchStats, fetchProjects, fetchSchedules } from './services/api';
 import Navbar from './components/common/Navbar';
 import Toast from './components/common/Toast';
 import HeroBanner from './components/public/HeroBanner';
 import TalentCatalog from './components/public/TalentCatalog';
 import TalentDetailModal from './components/public/TalentDetailModal';
 import BookingInquiryModal from './components/public/BookingInquiryModal';
+import CRMOverview from './components/crm/CRMOverview';
+import TalentRoster from './components/crm/TalentRoster';
+import KanbanPipeline from './components/crm/KanbanPipeline';
+import MasterCalendar from './components/crm/MasterCalendar';
+import AddTalentModal from './components/crm/AddTalentModal';
+import AddScheduleModal from './components/crm/AddScheduleModal';
 import {
   Sparkles,
   ShieldCheck,
   Zap,
   Globe2,
-  Award,
-  ArrowRight,
   Send,
   Users,
   Briefcase,
   Calendar,
   TrendingUp,
-  LayoutDashboard
+  LayoutDashboard,
+  Layers,
+  Plus
 } from 'lucide-react';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('public'); // 'public' | 'crm'
+  const [crmTab, setCrmTab] = useState('overview'); // 'overview' | 'roster' | 'kanban' | 'calendar'
+  
+  // Data states
   const [talents, setTalents] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [schedules, setSchedules] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,6 +43,8 @@ export default function App() {
   const [detailModalTalent, setDetailModalTalent] = useState(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [bookingTalent, setBookingTalent] = useState(null);
+  const [addTalentModalOpen, setAddTalentModalOpen] = useState(false);
+  const [addScheduleModalOpen, setAddScheduleModalOpen] = useState(false);
 
   // Toast notifications state
   const [toasts, setToasts] = useState([]);
@@ -45,35 +58,45 @@ export default function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Fetch initial talents & stats
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        const [talentsData, statsData] = await Promise.all([
-          fetchTalents().catch((err) => {
-            console.warn('Talents API fetch error:', err);
-            return [];
-          }),
-          fetchStats().catch((err) => {
-            console.warn('Stats API fetch error:', err);
-            return null;
-          })
-        ]);
+  // Fetch initial data
+  const loadAllData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [talentsData, projectsData, schedulesData, statsData] = await Promise.all([
+        fetchTalents().catch((err) => {
+          console.warn('Talents API fetch error:', err);
+          return [];
+        }),
+        fetchProjects().catch((err) => {
+          console.warn('Projects API fetch error:', err);
+          return [];
+        }),
+        fetchSchedules().catch((err) => {
+          console.warn('Schedules API fetch error:', err);
+          return [];
+        }),
+        fetchStats().catch((err) => {
+          console.warn('Stats API fetch error:', err);
+          return null;
+        })
+      ]);
 
-        setTalents(talentsData || []);
-        setStats(statsData);
-        setError(null);
-      } catch (err) {
-        console.error('Data initialization error:', err);
-        setError(err.message || 'Failed to connect to backend server');
-      } finally {
-        setLoading(false);
-      }
+      setTalents(talentsData || []);
+      setProjects(projectsData || []);
+      setSchedules(schedulesData || []);
+      setStats(statsData);
+      setError(null);
+    } catch (err) {
+      console.error('Data initialization error:', err);
+      setError(err.message || 'Failed to connect to backend server');
+    } finally {
+      setLoading(false);
     }
-
-    loadData();
   }, []);
+
+  useEffect(() => {
+    loadAllData();
+  }, [loadAllData]);
 
   // Handler for opening talent detail modal
   const handleOpenDetail = (talent) => {
@@ -88,6 +111,12 @@ export default function App() {
 
   // Handler for booking inquiry success
   const handleBookingSuccess = (createdProject, formData) => {
+    if (createdProject) {
+      setProjects((prev) => [createdProject, ...prev]);
+    }
+    // Refresh stats
+    fetchStats().then(setStats).catch(() => {});
+
     addToast({
       type: 'success',
       title: 'Booking Inquiry Received!',
@@ -95,7 +124,33 @@ export default function App() {
     });
   };
 
-  // Smooth scroll to catalog
+  // CRM Update Handlers
+  const handleTalentUpdated = (updatedTalent) => {
+    setTalents((prev) => prev.map((t) => (t.id === updatedTalent.id ? updatedTalent : t)));
+    fetchStats().then(setStats).catch(() => {});
+  };
+
+  const handleTalentCreated = (newTalent) => {
+    setTalents((prev) => [newTalent, ...prev]);
+    fetchStats().then(setStats).catch(() => {});
+  };
+
+  const handleProjectUpdated = (updatedProject) => {
+    setProjects((prev) => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)));
+    fetchStats().then(setStats).catch(() => {});
+  };
+
+  const handleScheduleCreated = (newSchedule) => {
+    setSchedules((prev) => [...prev, newSchedule]);
+    fetchStats().then(setStats).catch(() => {});
+  };
+
+  const handleScheduleDeleted = (deletedId) => {
+    setSchedules((prev) => prev.filter((s) => s.id !== deletedId));
+    fetchStats().then(setStats).catch(() => {});
+  };
+
+  // Smooth scroll to catalog on public landing page
   const handleExploreRoster = () => {
     const catalogEl = document.getElementById('talents-catalog');
     if (catalogEl) {
@@ -108,7 +163,10 @@ export default function App() {
       {/* Navigation Bar with View Switcher */}
       <Navbar
         currentView={currentView}
-        onViewChange={setCurrentView}
+        onViewChange={(view) => {
+          setCurrentView(view);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
         onOpenInquiry={() => handleOpenBooking(null)}
       />
 
@@ -289,108 +347,116 @@ export default function App() {
             </section>
           </>
         ) : (
-          /* CRM Portal Overview / Switcher Placeholder (Full suite in Task 5/6/7) */
-          <div className="container" style={{ padding: '48px 24px' }}>
+          /* ==========================================================================
+             AGENCY CRM PORTAL SUITE (Task 5: Overview, Roster, Kanban, Calendar)
+             ========================================================================== */
+          <div className="container" style={{ padding: '36px 24px 64px' }}>
+            {/* CRM Navigation Sub-Header & Tab Selector */}
             <div
-              className="glass-panel animate-scale-in"
               style={{
-                padding: '36px',
-                marginBottom: '32px',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                boxShadow: 'var(--shadow-glass), var(--shadow-glow-blue)'
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '16px',
+                marginBottom: '28px'
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                <div>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--color-accent-blue-light)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '8px' }}>
-                    <LayoutDashboard size={16} /> Agency Internal Operations
-                  </div>
-                  <h1 className="font-heading" style={{ fontSize: '2.2rem', marginBottom: '8px' }}>
-                    TalentPulse <span className="text-gradient-blue-emerald">Agency CRM Suite</span>
-                  </h1>
-                  <p style={{ color: 'var(--color-text-secondary)', maxWidth: '640px' }}>
-                    Centralized talent roster management, client Kanban project pipeline, and master production calendar.
-                  </p>
-                </div>
+              {/* Tab Navigation */}
+              <div className="crm-nav-tabs">
+                <button
+                  type="button"
+                  onClick={() => setCrmTab('overview')}
+                  className={`crm-tab-btn ${crmTab === 'overview' ? 'active' : ''}`}
+                >
+                  <LayoutDashboard size={16} /> Overview
+                </button>
 
+                <button
+                  type="button"
+                  onClick={() => setCrmTab('roster')}
+                  className={`crm-tab-btn ${crmTab === 'roster' ? 'active' : ''}`}
+                >
+                  <Users size={16} /> Talent Roster ({talents.length})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCrmTab('kanban')}
+                  className={`crm-tab-btn ${crmTab === 'kanban' ? 'active' : ''}`}
+                >
+                  <TrendingUp size={16} /> Kanban Pipeline ({projects.length})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCrmTab('calendar')}
+                  className={`crm-tab-btn ${crmTab === 'calendar' ? 'active' : ''}`}
+                >
+                  <Calendar size={16} /> Master Calendar ({schedules.length})
+                </button>
+              </div>
+
+              {/* View Switch / Quick Action */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   type="button"
                   onClick={() => setCurrentView('public')}
-                  className="btn btn-outline"
+                  className="btn btn-secondary btn-sm"
                 >
-                  &larr; Return to Public Showcase
+                  &larr; View Public Showcase
                 </button>
               </div>
             </div>
 
-            {/* Quick Metrics Grid */}
-            <div className="grid-responsive" style={{ marginBottom: '32px' }}>
-              <div className="glass-card" style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>Active Talents</span>
-                  <Users size={20} color="var(--color-accent-purple-light)" />
-                </div>
-                <div style={{ fontSize: '2.2rem', fontWeight: 800 }}>{stats?.activeTalents ?? talents.length}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-accent-emerald-light)', marginTop: '6px' }}>
-                  Ready for campaign booking
-                </div>
-              </div>
+            {/* Render Active CRM Tab View */}
+            {crmTab === 'overview' && (
+              <CRMOverview
+                stats={stats}
+                talents={talents}
+                projects={projects}
+                schedules={schedules}
+                onNavigateTab={(tab) => setCrmTab(tab)}
+                onOpenAddTalent={() => setAddTalentModalOpen(true)}
+                onOpenAddSchedule={() => setAddScheduleModalOpen(true)}
+              />
+            )}
 
-              <div className="glass-card" style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>Active Projects</span>
-                  <Briefcase size={20} color="var(--color-accent-blue-light)" />
-                </div>
-                <div style={{ fontSize: '2.2rem', fontWeight: 800 }}>{stats?.activeProjects ?? '6'}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-accent-blue-light)', marginTop: '6px' }}>
-                  Across Kanban workflow stages
-                </div>
-              </div>
+            {crmTab === 'roster' && (
+              <TalentRoster
+                talents={talents}
+                onTalentUpdated={handleTalentUpdated}
+                onTalentCreated={handleTalentCreated}
+                onViewTalentDetails={handleOpenDetail}
+                addToast={addToast}
+              />
+            )}
 
-              <div className="glass-card" style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>New Inquiries</span>
-                  <Sparkles size={20} color="var(--color-accent-pink)" />
-                </div>
-                <div style={{ fontSize: '2.2rem', fontWeight: 800 }}>{stats?.pendingLeads ?? '2'}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-accent-pink)', marginTop: '6px' }}>
-                  Inbound showcase leads
-                </div>
-              </div>
+            {crmTab === 'kanban' && (
+              <KanbanPipeline
+                projects={projects}
+                talents={talents}
+                onProjectUpdated={handleProjectUpdated}
+                onOpenBooking={() => handleOpenBooking(null)}
+                addToast={addToast}
+              />
+            )}
 
-              <div className="glass-card" style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>Production Shoots</span>
-                  <Calendar size={20} color="var(--color-accent-amber-light)" />
-                </div>
-                <div style={{ fontSize: '2.2rem', fontWeight: 800 }}>{stats?.weekShoots ?? '3'}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-accent-amber-light)', marginTop: '6px' }}>
-                  Scheduled this week
-                </div>
-              </div>
-            </div>
-
-            {/* Inbound Booking Quick Action */}
-            <div className="glass-card" style={{ padding: '32px', textAlign: 'center' }}>
-              <h3 style={{ fontSize: '1.4rem', marginBottom: '8px' }}>Agency Internal Tools Connected</h3>
-              <p style={{ color: 'var(--color-text-secondary)', maxWidth: '580px', margin: '0 auto 20px' }}>
-                Public showcase booking submissions are automatically synchronized with the backend SQLite database and ready for pipeline management.
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => handleOpenBooking(null)}
-                  className="btn btn-primary"
-                >
-                  <Send size={16} /> Test Booking Inquiry Flow
-                </button>
-              </div>
-            </div>
+            {crmTab === 'calendar' && (
+              <MasterCalendar
+                schedules={schedules}
+                talents={talents}
+                projects={projects}
+                onScheduleCreated={handleScheduleCreated}
+                onScheduleDeleted={handleScheduleDeleted}
+                addToast={addToast}
+              />
+            )}
           </div>
         )}
       </main>
 
-      {/* Talent Detail Modal */}
+      {/* Talent Detail Modal (Public + CRM) */}
       <TalentDetailModal
         talent={detailModalTalent}
         isOpen={Boolean(detailModalTalent)}
@@ -408,6 +474,22 @@ export default function App() {
           setBookingTalent(null);
         }}
         onSuccess={handleBookingSuccess}
+      />
+
+      {/* Add Talent Modal (CRM Global) */}
+      <AddTalentModal
+        isOpen={addTalentModalOpen}
+        onClose={() => setAddTalentModalOpen(false)}
+        onSuccess={handleTalentCreated}
+      />
+
+      {/* Add Schedule Modal (CRM Global) */}
+      <AddScheduleModal
+        isOpen={addScheduleModalOpen}
+        talents={talents}
+        projects={projects}
+        onClose={() => setAddScheduleModalOpen(false)}
+        onSuccess={handleScheduleCreated}
       />
 
       {/* Floating Toast Notification Container */}
